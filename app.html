@@ -14,6 +14,9 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    margin: 0;
+    padding: 10px;
+    box-sizing: border-box;
 }
 
 .container {
@@ -54,6 +57,7 @@ input, select {
     color: red;
     font-size: 12px;
     display: none;
+    margin-top: 4px;
 }
 
 button {
@@ -64,6 +68,8 @@ button {
     border: none;
     border-radius: 6px;
     font-size: 16px;
+    margin-top: 10px;
+    cursor: pointer;
 }
 
 #mensaje {
@@ -84,7 +90,8 @@ button {
 
 <div class="field">
 <label>Herramienta</label>
-<select id="herramienta"></select>
+<select id="herramienta" onchange="toggleOtro('herramienta')"></select>
+<input id="herramientaOtro" placeholder="Escribir nueva herramienta" style="display:none; margin-top: 8px;">
 <div class="error" id="errorHerramienta">Campo obligatorio</div>
 </div>
 
@@ -97,27 +104,29 @@ button {
 <div class="field">
 <label>Origen</label>
 <select id="origen" onchange="toggleOtro('origen')">
+<option value="">Seleccionar...</option>
 <option>Pañol Intelmec</option>
 <option>Porta</option>
 <option>Oficina</option>
 <option>Coca Cola</option>
-<option>Otro</option>
+<option value="Otro">Otro</option>
 </select>
-<input id="origenOtro" placeholder="Escribir origen" style="display:none">
+<input id="origenOtro" placeholder="Escribir origen" style="display:none; margin-top: 8px;">
 <div class="error" id="errorOrigen">Campo obligatorio</div>
 </div>
 
 <div class="field">
 <label>Destino</label>
 <select id="destino" onchange="toggleOtro('destino')">
+<option value="">Seleccionar...</option>
 <option>Pañol Intelmec</option>
 <option>Pañol Armoy</option>
 <option>Porta</option>
 <option>Oficina</option>
 <option>Coca Cola</option>
-<option>Otro</option>
+<option value="Otro">Otro</option>
 </select>
-<input id="destinoOtro" placeholder="Escribir destino" style="display:none">
+<input id="destinoOtro" placeholder="Escribir destino" style="display:none; margin-top: 8px;">
 <div class="error" id="errorDestino">Campo obligatorio</div>
 </div>
 
@@ -161,14 +170,24 @@ let herramientas = [
 
 function cargarHerramientas() {
     let select = document.getElementById("herramienta");
+    select.innerHTML = '<option value="">Seleccionar...</option>';
+    
     herramientas.sort();
     herramientas.forEach(h => {
-        select.innerHTML += `<option>${h}</option>`;
+        select.innerHTML += `<option value="${h}">${h}</option>`;
     });
+    
+    select.innerHTML += '<option value="Otro">Otro</option>';
 
     // 🔹 Autocompletar desde QR
     if (herramientaQR) {
-        select.value = herramientaQR;
+        if (herramientas.includes(herramientaQR)) {
+            select.value = herramientaQR;
+        } else {
+            select.value = "Otro";
+            toggleOtro('herramienta');
+            document.getElementById("herramientaOtro").value = herramientaQR;
+        }
     }
 
     if (codigoQR) {
@@ -206,9 +225,12 @@ function validar() {
         }
     }
 
-    check("herramienta", "errorHerramienta");
     check("modelo", "errorModelo");
     check("responsable", "errorResponsable");
+
+    let herramienta = document.getElementById("herramienta").value === "Otro"
+        ? document.getElementById("herramientaOtro").value
+        : document.getElementById("herramienta").value;
 
     let origen = document.getElementById("origen").value === "Otro"
         ? document.getElementById("origenOtro").value
@@ -217,6 +239,13 @@ function validar() {
     let destino = document.getElementById("destino").value === "Otro"
         ? document.getElementById("destinoOtro").value
         : document.getElementById("destino").value;
+
+    if (!herramienta) {
+        document.getElementById("errorHerramienta").style.display = "block";
+        valido = false;
+    } else {
+        document.getElementById("errorHerramienta").style.display = "none";
+    }
 
     if (!origen) {
         document.getElementById("errorOrigen").style.display = "block";
@@ -250,6 +279,10 @@ async function enviar() {
     boton.disabled = true;
     boton.innerText = "Guardando...";
 
+    let herramienta = document.getElementById("herramienta").value === "Otro"
+        ? document.getElementById("herramientaOtro").value
+        : document.getElementById("herramienta").value;
+
     let origen = document.getElementById("origen").value === "Otro"
         ? document.getElementById("origenOtro").value
         : document.getElementById("origen").value;
@@ -259,11 +292,11 @@ async function enviar() {
         : document.getElementById("destino").value;
 
     let data = {
-        herramienta: document.getElementById("herramienta").value,
+        herramienta: herramienta,
         modelo: document.getElementById("modelo").value,
         codigo: document.getElementById("modelo").value,
-        origen,
-        destino,
+        origen: origen,
+        destino: destino,
         responsable: document.getElementById("responsable").value,
         tipo: "TRASLADO",
         obs: document.getElementById("obs").value
@@ -279,6 +312,7 @@ async function enviar() {
         mensaje.innerText = "✅ Movimiento guardado";
 
         document.querySelectorAll("input").forEach(i => i.value = "");
+        document.querySelectorAll("select").forEach(s => { s.selectedIndex = 0; toggleOtro(s.id); });
 
     } catch (error) {
         mensaje.style.color = "red";
