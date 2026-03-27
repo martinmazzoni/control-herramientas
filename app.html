@@ -97,7 +97,7 @@ Cargando...
 
 <div class="field">
 <label>Origen</label>
-<select id="origen">
+<select id="origen" onchange="toggleOtro('origen')">
 <option value="">Seleccionar...</option>
 <option>Pañol Intelmec</option>
 <option>Porta</option>
@@ -111,7 +111,7 @@ Cargando...
 
 <div class="field">
 <label>Destino</label>
-<select id="destino">
+<select id="destino" onchange="toggleOtro('destino')">
 <option value="">Seleccionar...</option>
 <option>Pañol Intelmec</option>
 <option>Pañol Armoy</option>
@@ -151,6 +151,19 @@ const id = params.get("id");
 
 let herramientaData = null;
 
+// 🔹 Mostrar/ocultar input "Otro"
+function toggleOtro(campo) {
+    const select = document.getElementById(campo);
+    const input = document.getElementById(campo + "Otro");
+
+    if (select.value === "Otro") {
+        input.style.display = "block";
+    } else {
+        input.style.display = "none";
+        input.value = "";
+    }
+}
+
 // 🔹 Cargar datos desde Google Sheets
 async function cargarHerramienta() {
 
@@ -169,7 +182,6 @@ async function cargarHerramienta() {
         }
 
         herramientaData = data;
-
         document.getElementById("herramientaNombre").innerText = data.nombre;
 
     } catch (error) {
@@ -195,8 +207,28 @@ function validar() {
     }
 
     check("responsable", "errorResponsable");
-    check("origen", "errorOrigen");
-    check("destino", "errorDestino");
+
+    let origen = document.getElementById("origen").value === "Otro"
+        ? document.getElementById("origenOtro").value
+        : document.getElementById("origen").value;
+
+    let destino = document.getElementById("destino").value === "Otro"
+        ? document.getElementById("destinoOtro").value
+        : document.getElementById("destino").value;
+
+    if (!origen) {
+        document.getElementById("errorOrigen").style.display = "block";
+        valido = false;
+    } else {
+        document.getElementById("errorOrigen").style.display = "none";
+    }
+
+    if (!destino) {
+        document.getElementById("errorDestino").style.display = "block";
+        valido = false;
+    } else {
+        document.getElementById("errorDestino").style.display = "none";
+    }
 
     return valido;
 }
@@ -216,8 +248,13 @@ async function enviar() {
     boton.disabled = true;
     boton.innerText = "Guardando...";
 
-    let origen = document.getElementById("origen").value;
-    let destino = document.getElementById("destino").value;
+    let origen = document.getElementById("origen").value === "Otro"
+        ? document.getElementById("origenOtro").value
+        : document.getElementById("origen").value;
+
+    let destino = document.getElementById("destino").value === "Otro"
+        ? document.getElementById("destinoOtro").value
+        : document.getElementById("destino").value;
 
     let data = {
         id: herramientaData.id,
@@ -237,10 +274,16 @@ async function enviar() {
         mensaje.style.color = "green";
         mensaje.innerText = "✅ Movimiento guardado";
 
+        // limpiar campos
         document.getElementById("responsable").value = "";
         document.getElementById("obs").value = "";
         document.getElementById("origen").selectedIndex = 0;
         document.getElementById("destino").selectedIndex = 0;
+
+        document.getElementById("origenOtro").value = "";
+        document.getElementById("destinoOtro").value = "";
+        document.getElementById("origenOtro").style.display = "none";
+        document.getElementById("destinoOtro").style.display = "none";
 
     } catch (error) {
         mensaje.style.color = "red";
