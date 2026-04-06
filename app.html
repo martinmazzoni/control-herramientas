@@ -16,7 +16,6 @@ body {
     min-height: 100vh;
     margin: 0;
     padding: 10px;
-    box-sizing: border-box;
 }
 
 .container {
@@ -28,14 +27,10 @@ body {
     box-shadow: 0 5px 20px rgba(0,0,0,0.1);
 }
 
-h2 {
-    text-align: center;
-    margin-bottom: 10px;
-}
+h2 { text-align: center; }
+h3 { text-align: center; color: gray; font-size: 14px; }
 
-.field {
-    margin-bottom: 12px;
-}
+.field { margin-bottom: 12px; }
 
 input, select {
     width: 100%;
@@ -43,14 +38,6 @@ input, select {
     border: 1px solid #ccc;
     border-radius: 6px;
     font-size: 16px;
-    box-sizing: border-box;
-}
-
-.error {
-    color: red;
-    font-size: 12px;
-    display: none;
-    margin-top: 4px;
 }
 
 button {
@@ -62,13 +49,27 @@ button {
     border-radius: 6px;
     font-size: 16px;
     margin-top: 10px;
-    cursor: pointer;
 }
 
-#mensaje {
-    text-align: center;
-    margin-top: 10px;
-    font-weight: bold;
+.lista {
+    background: #f1f5f9;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.item button {
+    width: auto;
+    background: red;
+    padding: 5px;
 }
 </style>
 
@@ -78,21 +79,30 @@ button {
 
 <div class="container">
 
-<!-- 🔹 PANTALLA INFO -->
-<div id="pantallaInfo">Cargando...</div>
+<h2>Control de Herramientas</h2>
+<h3>Escaneá varias y guardá una sola vez</h3>
 
-<!-- 🔹 FORMULARIO -->
-<div id="pantallaFormulario" style="display:none;">
+<!-- LISTA -->
+<div class="field">
+<label>Herramientas seleccionadas</label>
+<div id="lista" class="lista"></div>
+</div>
 
-<h2>Nuevo Movimiento</h2>
-
+<!-- ORIGEN -->
 <div class="field">
 <label>Origen</label>
-<div id="origenAuto" style="padding:12px; background:#f1f5f9; border-radius:6px; font-weight:bold;">
--
-</div>
+<select id="origen" onchange="toggleOtro('origen')">
+<option value="">Seleccionar...</option>
+<option>Pañol Intelmec</option>
+<option>Porta</option>
+<option>Oficina</option>
+<option>Coca Cola</option>
+<option>Otro</option>
+</select>
+<input id="origenOtro" placeholder="Escribir origen" style="display:none; margin-top: 8px;">
 </div>
 
+<!-- DESTINO -->
 <div class="field">
 <label>Destino</label>
 <select id="destino" onchange="toggleOtro('destino')">
@@ -102,29 +112,27 @@ button {
 <option>Porta</option>
 <option>Oficina</option>
 <option>Coca Cola</option>
-<option>REPARACIÓN</option>
+<option>Reparación</option>
 <option>Otro</option>
 </select>
 <input id="destinoOtro" placeholder="Escribir destino" style="display:none; margin-top: 8px;">
-<div class="error" id="errorDestino">Campo obligatorio</div>
 </div>
 
+<!-- RESPONSABLE -->
 <div class="field">
-<label>Clave Operario</label>
-<input id="clave" maxlength="4">
-<div class="error" id="errorClave">Campo obligatorio</div>
+<label>Responsable</label>
+<input id="responsable">
 </div>
 
+<!-- OBS -->
 <div class="field">
 <label>Observaciones</label>
 <input id="obs">
 </div>
 
-<button onclick="enviar()" id="btnGuardar">Guardar Movimiento</button>
+<button onclick="guardarTodo()">Guardar Todo</button>
 
 <div id="mensaje"></div>
-
-</div>
 
 </div>
 
@@ -132,16 +140,59 @@ button {
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxYOgzrNSly5_wR8ULFjx693n9X1J5jA0IEAsCL8YwKSUQhNobvqxXXlhT7J7uzKgVF/exec";
 
+// 🔹 ARRAY GLOBAL
+let herramientas = [];
+
+// 🔹 LEER QR
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 
-let herramientaData = null;
-let ubicacionActual = "";
+// 🔹 AGREGAR HERRAMIENTA DESDE QR
+async function agregarHerramienta() {
 
-// 🔹 Mostrar/ocultar "Otro"
-function toggleOtro(campo) {
-    const select = document.getElementById(campo);
-    const input = document.getElementById(campo + "Otro");
+    if (!id) return;
+
+    // evitar duplicados
+    if (herramientas.find(h => h.id === id)) return;
+
+    try {
+        const res = await fetch(API_URL + "?id=" + id);
+        const data = await res.json();
+
+        herramientas.push(data);
+        renderLista();
+
+    } catch (e) {
+        console.log("Error");
+    }
+}
+
+// 🔹 MOSTRAR LISTA
+function renderLista() {
+
+    const lista = document.getElementById("lista");
+    lista.innerHTML = "";
+
+    herramientas.forEach((h, i) => {
+        lista.innerHTML += `
+        <div class="item">
+            ${h.nombre}
+            <button onclick="eliminar(${i})">X</button>
+        </div>`;
+    });
+}
+
+// 🔹 ELIMINAR
+function eliminar(i) {
+    herramientas.splice(i,1);
+    renderLista();
+}
+
+// 🔹 OTRO
+function toggleOtro(tipo) {
+
+    let select = document.getElementById(tipo);
+    let input = document.getElementById(tipo + "Otro");
 
     if (select.value === "Otro") {
         input.style.display = "block";
@@ -151,174 +202,50 @@ function toggleOtro(campo) {
     }
 }
 
-// 🔹 Formatear fecha
-function formatearFecha(fechaRaw) {
-
-    if (!fechaRaw || fechaRaw === "-") return "-";
-
-    let fecha = new Date(fechaRaw);
-
-    let dia = String(fecha.getDate()).padStart(2, '0');
-    let mes = String(fecha.getMonth() + 1).padStart(2, '0');
-    let anio = fecha.getFullYear();
-
-    let hora = String(fecha.getHours()).padStart(2, '0');
-    let min = String(fecha.getMinutes()).padStart(2, '0');
-
-    return `${dia}/${mes}/${anio} ${hora}:${min}`;
-}
-
-// 🔹 Cargar info
-async function cargarHerramienta() {
-
-    if (!id) {
-        document.getElementById("pantallaInfo").innerText = "QR inválido";
-        return;
-    }
-
-    try {
-        const res = await fetch(API_URL + "?id=" + id);
-        const data = await res.json();
-
-        if (data.error) {
-            document.getElementById("pantallaInfo").innerText = "No encontrada";
-            return;
-        }
-
-        herramientaData = data;
-        ubicacionActual = data.ubicacion;
-
-        document.getElementById("pantallaInfo").innerHTML = `
-            <h2>${data.nombre}</h2>
-            <p><b>Ubicación:</b> ${data.ubicacion}</p>
-            <p><b>Responsable:</b> ${data.responsable_actual}</p>
-            <p><b>Último movimiento:</b> ${formatearFecha(data.fecha)}</p>
-
-            <button onclick="mostrarFormulario()">Generar movimiento</button>
-        `;
-
-    } catch (error) {
-        document.getElementById("pantallaInfo").innerText = "Error de conexión";
-    }
-}
-
-// 🔹 Mostrar formulario
-function mostrarFormulario() {
-    document.getElementById("pantallaInfo").style.display = "none";
-    document.getElementById("pantallaFormulario").style.display = "block";
-
-    document.getElementById("origenAuto").innerText = ubicacionActual;
-}
-
-// 🔹 Validación
-function validar() {
-
-    let valido = true;
-
-    function check(id, errorId) {
-        let val = document.getElementById(id).value;
-        let error = document.getElementById(errorId);
-
-        if (!val) {
-            error.style.display = "block";
-            valido = false;
-        } else {
-            error.style.display = "none";
-        }
-    }
-
-    check("clave", "errorClave");
-
-    let destino = document.getElementById("destino").value === "Otro"
-        ? document.getElementById("destinoOtro").value
-        : document.getElementById("destino").value;
-
-    if (!destino) {
-        document.getElementById("errorDestino").style.display = "block";
-        valido = false;
-    } else {
-        document.getElementById("errorDestino").style.display = "none";
-    }
-
-    return valido;
-}
-
-// 🔹 Enviar
-async function enviar() {
+// 🔹 GUARDAR TODO
+async function guardarTodo() {
 
     const mensaje = document.getElementById("mensaje");
-    const boton = document.getElementById("btnGuardar");
 
-    if (!validar()) {
-        mensaje.style.color = "red";
-        mensaje.innerText = "❗ Completar campos obligatorios";
+    if (herramientas.length === 0) {
+        mensaje.innerText = "Escaneá al menos una herramienta";
         return;
     }
 
-    boton.disabled = true;
-    boton.innerText = "Guardando...";
+    let origen = document.getElementById("origen").value;
+    let destino = document.getElementById("destino").value;
 
-    let origen = ubicacionActual;
-
-    let destino = document.getElementById("destino").value === "Otro"
-        ? document.getElementById("destinoOtro").value
-        : document.getElementById("destino").value;
-
-    // 🔴 Validación extra
-    if (origen === destino) {
-        mensaje.style.color = "red";
-        mensaje.innerText = "❗ Origen y destino no pueden ser iguales";
-        boton.disabled = false;
-        boton.innerText = "Guardar Movimiento";
-        return;
-    }
+    if (origen === "Otro") origen = document.getElementById("origenOtro").value;
+    if (destino === "Otro") destino = document.getElementById("destinoOtro").value;
 
     let data = {
-        id: herramientaData.id,
+        herramientas: herramientas,
         origen: origen,
         destino: destino,
-        clave: document.getElementById("clave").value.trim(),
+        responsable: document.getElementById("responsable").value,
         tipo: "TRASLADO",
         obs: document.getElementById("obs").value
     };
 
     try {
-        const res = await fetch(API_URL, {
+
+        await fetch(API_URL, {
             method: "POST",
             body: JSON.stringify(data)
         });
 
-        const result = await res.json();
+        mensaje.innerText = "✅ Guardado correctamente";
 
-        if (result.error) {
-            mensaje.style.color = "red";
-            mensaje.innerText = "❌ " + result.error;
-            boton.disabled = false;
-            boton.innerText = "Guardar Movimiento";
-            return;
-        }
+        herramientas = [];
+        renderLista();
 
-        mensaje.style.color = "green";
-        mensaje.innerText = "✅ Movimiento guardado";
-
-        // limpiar
-        document.getElementById("clave").value = "";
-        document.getElementById("obs").value = "";
-        document.getElementById("destino").selectedIndex = 0;
-        document.getElementById("destinoOtro").value = "";
-        document.getElementById("destinoOtro").style.display = "none";
-
-    } catch (error) {
-        mensaje.style.color = "red";
-        mensaje.innerText = "❌ Error al guardar";
+    } catch (e) {
+        mensaje.innerText = "❌ Error";
     }
-
-    boton.disabled = false;
-    boton.innerText = "Guardar Movimiento";
 }
 
-// 🔹 INIT
-cargarHerramienta();
+// INIT
+agregarHerramienta();
 
 </script>
 
