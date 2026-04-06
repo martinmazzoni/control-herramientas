@@ -8,14 +8,13 @@
 
 <style>
 body {
-    font-family: Arial, sans-serif;
+    font-family: Arial;
     background: #f4f6f8;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     margin: 0;
-    padding: 10px;
 }
 
 .container {
@@ -24,53 +23,25 @@ body {
     border-radius: 10px;
     width: 100%;
     max-width: 420px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
 }
-
-h2 { text-align: center; }
-h3 { text-align: center; color: gray; font-size: 14px; }
 
 .field { margin-bottom: 12px; }
 
 input, select {
     width: 100%;
     padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 16px;
 }
 
 button {
     width: 100%;
     padding: 14px;
-    background: #2563eb;
+    background: blue;
     color: white;
     border: none;
-    border-radius: 6px;
-    font-size: 16px;
-    margin-top: 10px;
 }
 
-.lista {
-    background: #f1f5f9;
-    padding: 10px;
-    border-radius: 6px;
-    margin-bottom: 10px;
-    max-height: 150px;
-    overflow-y: auto;
-}
+.error { color: red; display: none; }
 
-.item {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 5px;
-}
-
-.item button {
-    width: auto;
-    background: red;
-    padding: 5px;
-}
 </style>
 
 </head>
@@ -79,173 +50,140 @@ button {
 
 <div class="container">
 
-<h2>Control de Herramientas</h2>
-<h3>Escaneá varias y guardá una sola vez</h3>
+<div id="pantallaInfo"></div>
 
-<!-- LISTA -->
-<div class="field">
-<label>Herramientas seleccionadas</label>
-<div id="lista" class="lista"></div>
-</div>
+<div id="pantallaFormulario" style="display:none;">
 
-<!-- ORIGEN -->
+<h2>Movimiento</h2>
+
+<div id="listaHerramientas"></div>
+
 <div class="field">
 <label>Origen</label>
-<select id="origen" onchange="toggleOtro('origen')">
-<option value="">Seleccionar...</option>
-<option>Pañol Intelmec</option>
-<option>Porta</option>
-<option>Oficina</option>
-<option>Coca Cola</option>
-<option>Otro</option>
-</select>
-<input id="origenOtro" placeholder="Escribir origen" style="display:none; margin-top: 8px;">
+<div id="origenAuto"></div>
 </div>
 
-<!-- DESTINO -->
 <div class="field">
 <label>Destino</label>
-<select id="destino" onchange="toggleOtro('destino')">
-<option value="">Seleccionar...</option>
+<select id="destino">
+<option value="">Seleccionar</option>
 <option>Pañol Intelmec</option>
-<option>Pañol Armoy</option>
-<option>Porta</option>
-<option>Oficina</option>
-<option>Coca Cola</option>
-<option>Reparación</option>
-<option>Otro</option>
+<option>Obra</option>
+<option>REPARACIÓN</option>
 </select>
-<input id="destinoOtro" placeholder="Escribir destino" style="display:none; margin-top: 8px;">
 </div>
 
-<!-- RESPONSABLE -->
 <div class="field">
-<label>Responsable</label>
-<input id="responsable">
+<label>Clave</label>
+<input id="clave">
 </div>
 
-<!-- OBS -->
-<div class="field">
-<label>Observaciones</label>
-<input id="obs">
-</div>
-
-<button onclick="guardarTodo()">Guardar Todo</button>
+<button onclick="enviar()">Guardar</button>
 
 <div id="mensaje"></div>
 
 </div>
 
+</div>
+
 <script>
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxYOgzrNSly5_wR8ULFjx693n9X1J5jA0IEAsCL8YwKSUQhNobvqxXXlhT7J7uzKgVF/exec";
-
-// 🔹 ARRAY GLOBAL
-let herramientas = [];
-
-// 🔹 LEER QR
+const API_URL = "PEGAR_TU_URL_APPS_SCRIPT";
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 
-// 🔹 AGREGAR HERRAMIENTA DESDE QR
-async function agregarHerramienta() {
+let ubicacionActual = "";
 
-    if (!id) return;
-
-    // evitar duplicados
-    if (herramientas.find(h => h.id === id)) return;
-
-    try {
-        const res = await fetch(API_URL + "?id=" + id);
-        const data = await res.json();
-
-        herramientas.push(data);
-        renderLista();
-
-    } catch (e) {
-        console.log("Error");
-    }
+// LOCAL STORAGE
+function obtenerLista() {
+    return JSON.parse(localStorage.getItem("herramientas")) || [];
 }
 
-// 🔹 MOSTRAR LISTA
-function renderLista() {
+function guardarLista(lista) {
+    localStorage.setItem("herramientas", JSON.stringify(lista));
+}
 
-    const lista = document.getElementById("lista");
-    lista.innerHTML = "";
+// FORMATEAR FECHA
+function formatearFecha(f) {
+    if (!f || f === "-") return "-";
+    let d = new Date(f);
+    return d.toLocaleString();
+}
 
-    herramientas.forEach((h, i) => {
-        lista.innerHTML += `
-        <div class="item">
-            ${h.nombre}
-            <button onclick="eliminar(${i})">X</button>
-        </div>`;
+// CARGAR
+async function cargar() {
+
+    const res = await fetch(API_URL + "?id=" + id);
+    const data = await res.json();
+
+    ubicacionActual = data.ubicacion;
+
+    let lista = obtenerLista();
+
+    if (!lista.find(h => h.id === data.id)) {
+        lista.push({ id: data.id, nombre: data.nombre });
+        guardarLista(lista);
+    }
+
+    document.getElementById("pantallaInfo").innerHTML = `
+        <h2>${data.nombre}</h2>
+        <p>${data.ubicacion}</p>
+        <p>${data.responsable_actual}</p>
+        <p>${formatearFecha(data.fecha)}</p>
+        <button onclick="form()">Generar movimiento</button>
+    `;
+}
+
+// MOSTRAR FORM
+function form() {
+    document.getElementById("pantallaInfo").style.display = "none";
+    document.getElementById("pantallaFormulario").style.display = "block";
+
+    document.getElementById("origenAuto").innerText = ubicacionActual;
+
+    render();
+}
+
+// LISTA
+function render() {
+    let lista = obtenerLista();
+
+    document.getElementById("listaHerramientas").innerHTML =
+        lista.map(h => `<div>${h.nombre}</div>`).join("");
+}
+
+// ENVIAR
+async function enviar() {
+
+    let lista = obtenerLista();
+
+    let data = {
+        herramientas: lista,
+        origen: ubicacionActual,
+        destino: document.getElementById("destino").value,
+        clave: document.getElementById("clave").value,
+        tipo: "TRASLADO",
+        obs: ""
+    };
+
+    const res = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify(data)
     });
-}
 
-// 🔹 ELIMINAR
-function eliminar(i) {
-    herramientas.splice(i,1);
-    renderLista();
-}
+    const result = await res.json();
 
-// 🔹 OTRO
-function toggleOtro(tipo) {
-
-    let select = document.getElementById(tipo);
-    let input = document.getElementById(tipo + "Otro");
-
-    if (select.value === "Otro") {
-        input.style.display = "block";
-    } else {
-        input.style.display = "none";
-        input.value = "";
-    }
-}
-
-// 🔹 GUARDAR TODO
-async function guardarTodo() {
-
-    const mensaje = document.getElementById("mensaje");
-
-    if (herramientas.length === 0) {
-        mensaje.innerText = "Escaneá al menos una herramienta";
+    if (result.error) {
+        alert(result.error);
         return;
     }
 
-    let origen = document.getElementById("origen").value;
-    let destino = document.getElementById("destino").value;
+    alert("OK");
 
-    if (origen === "Otro") origen = document.getElementById("origenOtro").value;
-    if (destino === "Otro") destino = document.getElementById("destinoOtro").value;
-
-    let data = {
-        herramientas: herramientas,
-        origen: origen,
-        destino: destino,
-        responsable: document.getElementById("responsable").value,
-        tipo: "TRASLADO",
-        obs: document.getElementById("obs").value
-    };
-
-    try {
-
-        await fetch(API_URL, {
-            method: "POST",
-            body: JSON.stringify(data)
-        });
-
-        mensaje.innerText = "✅ Guardado correctamente";
-
-        herramientas = [];
-        renderLista();
-
-    } catch (e) {
-        mensaje.innerText = "❌ Error";
-    }
+    localStorage.removeItem("herramientas");
 }
 
-// INIT
-agregarHerramienta();
+cargar();
 
 </script>
 
