@@ -35,13 +35,18 @@ input, select {
 button {
     width: 100%;
     padding: 14px;
-    background: blue;
+    background: #2563eb;
     color: white;
     border: none;
 }
 
 .error { color: red; display: none; }
 
+#mensaje {
+    text-align: center;
+    margin-top: 10px;
+    font-weight: bold;
+}
 </style>
 
 </head>
@@ -50,17 +55,17 @@ button {
 
 <div class="container">
 
-<div id="pantallaInfo"></div>
+<div id="pantallaInfo">Cargando herramienta...</div>
 
 <div id="pantallaFormulario" style="display:none;">
 
 <h2>Movimiento</h2>
 
-<div id="listaHerramientas"></div>
+<div id="listaHerramientas" style="margin-bottom:10px;"></div>
 
 <div class="field">
 <label>Origen</label>
-<div id="origenAuto"></div>
+<div id="origenAuto" style="padding:10px; background:#f1f5f9;"></div>
 </div>
 
 <div class="field">
@@ -78,7 +83,7 @@ button {
 <input id="clave">
 </div>
 
-<button onclick="enviar()">Guardar</button>
+<button onclick="enviar()" id="btnGuardar">Guardar</button>
 
 <div id="mensaje"></div>
 
@@ -89,12 +94,13 @@ button {
 <script>
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxYOgzrNSly5_wR8ULFjx693n9X1J5jA0IEAsCL8YwKSUQhNobvqxXXlhT7J7uzKgVF/exec";
+
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 
 let ubicacionActual = "";
 
-// LOCAL STORAGE
+// 🔹 LOCAL STORAGE
 function obtenerLista() {
     return JSON.parse(localStorage.getItem("herramientas")) || [];
 }
@@ -103,38 +109,63 @@ function guardarLista(lista) {
     localStorage.setItem("herramientas", JSON.stringify(lista));
 }
 
-// FORMATEAR FECHA
+// 🔹 FORMATEAR FECHA
 function formatearFecha(f) {
     if (!f || f === "-") return "-";
     let d = new Date(f);
     return d.toLocaleString();
 }
 
-// CARGAR
+// 🔹 CARGAR (CORREGIDO)
 async function cargar() {
 
-    const res = await fetch(API_URL + "?id=" + id);
-    const data = await res.json();
+    const contenedor = document.getElementById("pantallaInfo");
 
-    ubicacionActual = data.ubicacion;
+    try {
 
-    let lista = obtenerLista();
+        if (!id) {
+            contenedor.innerText = "QR inválido";
+            return;
+        }
 
-    if (!lista.find(h => h.id === data.id)) {
-        lista.push({ id: data.id, nombre: data.nombre });
-        guardarLista(lista);
+        const res = await fetch(API_URL + "?id=" + id);
+
+        if (!res.ok) {
+            contenedor.innerText = "Error de conexión";
+            return;
+        }
+
+        const data = await res.json();
+
+        if (data.error) {
+            contenedor.innerText = "Herramienta no encontrada";
+            return;
+        }
+
+        ubicacionActual = data.ubicacion || "Sin movimientos";
+
+        let lista = obtenerLista();
+
+        if (!lista.find(h => h.id === data.id)) {
+            lista.push({ id: data.id, nombre: data.nombre });
+            guardarLista(lista);
+        }
+
+        contenedor.innerHTML = `
+            <h2>${data.nombre}</h2>
+            <p><b>Ubicación:</b> ${data.ubicacion || "-"}</p>
+            <p><b>Responsable:</b> ${data.responsable_actual || "-"}</p>
+            <p><b>Último movimiento:</b> ${formatearFecha(data.fecha)}</p>
+            <button onclick="form()">Generar movimiento</button>
+        `;
+
+    } catch (error) {
+        contenedor.innerText = "Error general";
+        console.error(error);
     }
-
-    document.getElementById("pantallaInfo").innerHTML = `
-        <h2>${data.nombre}</h2>
-        <p>${data.ubicacion}</p>
-        <p>${data.responsable_actual}</p>
-        <p>${formatearFecha(data.fecha)}</p>
-        <button onclick="form()">Generar movimiento</button>
-    `;
 }
 
-// MOSTRAR FORM
+// 🔹 MOSTRAR FORM
 function form() {
     document.getElementById("pantallaInfo").style.display = "none";
     document.getElementById("pantallaFormulario").style.display = "block";
@@ -144,45 +175,82 @@ function form() {
     render();
 }
 
-// LISTA
+// 🔹 LISTA
 function render() {
     let lista = obtenerLista();
 
     document.getElementById("listaHerramientas").innerHTML =
-        lista.map(h => `<div>${h.nombre}</div>`).join("");
+        lista.map(h => `<div style="padding:6px; border-bottom:1px solid #eee;">${h.nombre}</div>`).join("");
 }
 
-// ENVIAR
+// 🔹 ENVIAR
 async function enviar() {
 
+    const mensaje = document.getElementById("mensaje");
+    const boton = document.getElementById("btnGuardar");
+
     let lista = obtenerLista();
+
+    if (lista.length === 0) {
+        mensaje.style.color = "red";
+        mensaje.innerText = "No hay herramientas";
+        return;
+    }
+
+    let destino = document.getElementById("destino").value;
+    let clave = document.getElementById("clave").value;
+
+    if (!destino || !clave) {
+        mensaje.style.color = "red";
+        mensaje.innerText = "Completar datos";
+        return;
+    }
+
+    boton.disabled = true;
+    boton.innerText = "Guardando...";
 
     let data = {
         herramientas: lista,
         origen: ubicacionActual,
-        destino: document.getElementById("destino").value,
-        clave: document.getElementById("clave").value,
+        destino: destino,
+        clave: clave,
         tipo: "TRASLADO",
         obs: ""
     };
 
-    const res = await fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify(data)
-    });
+    try {
 
-    const result = await res.json();
+        const res = await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify(data)
+        });
 
-    if (result.error) {
-        alert(result.error);
-        return;
+        const result = await res.json();
+
+        if (result.error) {
+            mensaje.style.color = "red";
+            mensaje.innerText = result.error;
+            boton.disabled = false;
+            boton.innerText = "Guardar";
+            return;
+        }
+
+        mensaje.style.color = "green";
+        mensaje.innerText = "Movimiento guardado";
+
+        localStorage.removeItem("herramientas");
+        render();
+
+    } catch (error) {
+        mensaje.style.color = "red";
+        mensaje.innerText = "Error al guardar";
     }
 
-    alert("OK");
-
-    localStorage.removeItem("herramientas");
+    boton.disabled = false;
+    boton.innerText = "Guardar";
 }
 
+// 🔹 INIT
 cargar();
 
 </script>
