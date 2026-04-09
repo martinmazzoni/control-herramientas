@@ -14,6 +14,9 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    margin: 0;
+    padding: 10px;
+    box-sizing: border-box;
 }
 
 .container {
@@ -27,14 +30,7 @@ body {
 
 h2 {
     text-align: center;
-    margin-bottom: 5px;
-}
-
-h3 {
-    text-align: center;
-    color: gray;
-    font-size: 14px;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
 }
 
 .field {
@@ -54,6 +50,7 @@ input, select {
     color: red;
     font-size: 12px;
     display: none;
+    margin-top: 4px;
 }
 
 button {
@@ -64,6 +61,8 @@ button {
     border: none;
     border-radius: 6px;
     font-size: 16px;
+    margin-top: 10px;
+    cursor: pointer;
 }
 
 #mensaje {
@@ -79,52 +78,49 @@ button {
 
 <div class="container">
 
-<h2>Control de Herramientas - INTELMEC</h2>
-<h3>Sistema de Trazabilidad</h3>
+<!-- 🔹 PANTALLA DE INFORMACIÓN -->
+<div id="pantallaInfo">Cargando...</div>
 
-<div class="field">
-<label>Herramienta</label>
-<select id="herramienta"></select>
-<div class="error" id="errorHerramienta">Campo obligatorio</div>
-</div>
+<!-- 🔹 FORMULARIO -->
+<div id="pantallaFormulario" style="display:none;">
 
-<div class="field">
-<label>Código</label>
-<input id="modelo">
-<div class="error" id="errorModelo">Campo obligatorio</div>
-</div>
+<h2>Nuevo Movimiento</h2>
 
 <div class="field">
 <label>Origen</label>
 <select id="origen" onchange="toggleOtro('origen')">
+<option value="">Seleccionar...</option>
+<option>REPARACIÓN</option>
 <option>Pañol Intelmec</option>
 <option>Porta</option>
 <option>Oficina</option>
 <option>Coca Cola</option>
 <option>Otro</option>
 </select>
-<input id="origenOtro" placeholder="Escribir origen" style="display:none">
+<input id="origenOtro" placeholder="Escribir origen" style="display:none; margin-top: 8px;">
 <div class="error" id="errorOrigen">Campo obligatorio</div>
 </div>
 
 <div class="field">
 <label>Destino</label>
 <select id="destino" onchange="toggleOtro('destino')">
+<option value="">Seleccionar...</option>
 <option>Pañol Intelmec</option>
 <option>Pañol Armoy</option>
 <option>Porta</option>
 <option>Oficina</option>
 <option>Coca Cola</option>
+<option>REPARACIÓN</option>
 <option>Otro</option>
 </select>
-<input id="destinoOtro" placeholder="Escribir destino" style="display:none">
+<input id="destinoOtro" placeholder="Escribir destino" style="display:none; margin-top: 8px;">
 <div class="error" id="errorDestino">Campo obligatorio</div>
 </div>
 
 <div class="field">
-<label>Responsable</label>
-<input id="responsable">
-<div class="error" id="errorResponsable">Campo obligatorio</div>
+<label>Clave Operario</label>
+<input id="clave" maxlength="4">
+<div class="error" id="errorClave">Campo obligatorio</div>
 </div>
 
 <div class="field">
@@ -138,48 +134,21 @@ button {
 
 </div>
 
+</div>
+
 <script>
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxYOgzrNSly5_wR8ULFjx693n9X1J5jA0IEAsCL8YwKSUQhNobvqxXXlhT7J7uzKgVF/exec";
 
-// 🔹 LEER QR
 const params = new URLSearchParams(window.location.search);
-const herramientaQR = params.get("herramienta");
-const codigoQR = params.get("codigo");
+const id = params.get("id");
 
-// 🔹 LISTA HERRAMIENTAS
-let herramientas = [
-"Amoladora 4\"",
-"Amoladora 7\"",
-"Atornilladora eléctrica",
-"Equipo oxicorte",
-"Maquina de soldar",
-"Morsa N 6",
-"Nivel laser",
-"Taladro Percutor"
-];
+let herramientaData = null;
 
-function cargarHerramientas() {
-    let select = document.getElementById("herramienta");
-    herramientas.sort();
-    herramientas.forEach(h => {
-        select.innerHTML += `<option>${h}</option>`;
-    });
-
-    // 🔹 Autocompletar desde QR
-    if (herramientaQR) {
-        select.value = herramientaQR;
-    }
-
-    if (codigoQR) {
-        document.getElementById("modelo").value = codigoQR;
-    }
-}
-
-// 🔹 Mostrar "Otro"
-function toggleOtro(tipo) {
-    let select = document.getElementById(tipo);
-    let input = document.getElementById(tipo + "Otro");
+// 🔹 Mostrar/ocultar "Otro"
+function toggleOtro(campo) {
+    const select = document.getElementById(campo);
+    const input = document.getElementById(campo + "Otro");
 
     if (select.value === "Otro") {
         input.style.display = "block";
@@ -187,6 +156,45 @@ function toggleOtro(tipo) {
         input.style.display = "none";
         input.value = "";
     }
+}
+
+// 🔹 Cargar info
+async function cargarHerramienta() {
+
+    if (!id) {
+        document.getElementById("pantallaInfo").innerText = "QR inválido";
+        return;
+    }
+
+    try {
+        const res = await fetch(API_URL + "?id=" + id);
+        const data = await res.json();
+
+        if (data.error) {
+            document.getElementById("pantallaInfo").innerText = "No encontrada";
+            return;
+        }
+
+        herramientaData = data;
+
+        document.getElementById("pantallaInfo").innerHTML = `
+            <h2>${data.nombre}</h2>
+            <p><b>Ubicación:</b> ${data.ubicacion}</p>
+            <p><b>Responsable:</b> ${data.responsable_actual}</p>
+            <p><b>Último movimiento:</b> ${data.fecha}</p>
+
+            <button onclick="mostrarFormulario()">Generar movimiento</button>
+        `;
+
+    } catch (error) {
+        document.getElementById("pantallaInfo").innerText = "Error de conexión";
+    }
+}
+
+// 🔹 Mostrar formulario
+function mostrarFormulario() {
+    document.getElementById("pantallaInfo").style.display = "none";
+    document.getElementById("pantallaFormulario").style.display = "block";
 }
 
 // 🔹 Validación
@@ -206,9 +214,7 @@ function validar() {
         }
     }
 
-    check("herramienta", "errorHerramienta");
-    check("modelo", "errorModelo");
-    check("responsable", "errorResponsable");
+    check("clave", "errorClave");
 
     let origen = document.getElementById("origen").value === "Otro"
         ? document.getElementById("origenOtro").value
@@ -235,7 +241,7 @@ function validar() {
     return valido;
 }
 
-// 🔹 Enviar datos
+// 🔹 Enviar
 async function enviar() {
 
     const mensaje = document.getElementById("mensaje");
@@ -259,26 +265,43 @@ async function enviar() {
         : document.getElementById("destino").value;
 
     let data = {
-        herramienta: document.getElementById("herramienta").value,
-        modelo: document.getElementById("modelo").value,
-        codigo: document.getElementById("modelo").value,
-        origen,
-        destino,
-        responsable: document.getElementById("responsable").value,
+        id: herramientaData.id,
+        origen: origen,
+        destino: destino,
+        clave: document.getElementById("clave").value.trim(),
         tipo: "TRASLADO",
         obs: document.getElementById("obs").value
     };
 
     try {
-        await fetch(API_URL, {
+        const res = await fetch(API_URL, {
             method: "POST",
             body: JSON.stringify(data)
         });
 
+        const result = await res.json();
+
+        if (result.error) {
+            mensaje.style.color = "red";
+            mensaje.innerText = "❌ " + result.error;
+            boton.disabled = false;
+            boton.innerText = "Guardar Movimiento";
+            return;
+        }
+
         mensaje.style.color = "green";
         mensaje.innerText = "✅ Movimiento guardado";
 
-        document.querySelectorAll("input").forEach(i => i.value = "");
+        // limpiar
+        document.getElementById("clave").value = "";
+        document.getElementById("obs").value = "";
+        document.getElementById("origen").selectedIndex = 0;
+        document.getElementById("destino").selectedIndex = 0;
+
+        document.getElementById("origenOtro").value = "";
+        document.getElementById("destinoOtro").value = "";
+        document.getElementById("origenOtro").style.display = "none";
+        document.getElementById("destinoOtro").style.display = "none";
 
     } catch (error) {
         mensaje.style.color = "red";
@@ -289,7 +312,8 @@ async function enviar() {
     boton.innerText = "Guardar Movimiento";
 }
 
-cargarHerramientas();
+// 🔹 INIT
+cargarHerramienta();
 
 </script>
 
