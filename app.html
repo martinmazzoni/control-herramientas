@@ -8,13 +8,12 @@
 
 <style>
 body {
-    font-family: Arial;
+    font-family: Arial, sans-serif;
     background: #f4f6f8;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    margin: 0;
 }
 
 .container {
@@ -23,13 +22,38 @@ body {
     border-radius: 10px;
     width: 100%;
     max-width: 420px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
 }
 
-.field { margin-bottom: 12px; }
+h2 {
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+h3 {
+    text-align: center;
+    color: gray;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.field {
+    margin-bottom: 12px;
+}
 
 input, select {
     width: 100%;
     padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+.error {
+    color: red;
+    font-size: 12px;
+    display: none;
 }
 
 button {
@@ -38,9 +62,9 @@ button {
     background: #2563eb;
     color: white;
     border: none;
+    border-radius: 6px;
+    font-size: 16px;
 }
-
-.error { color: red; display: none; }
 
 #mensaje {
     text-align: center;
@@ -55,39 +79,62 @@ button {
 
 <div class="container">
 
-<div id="pantallaInfo">Cargando herramienta...</div>
+<h2>Control de Herramientas - INTELMEC</h2>
+<h3>Sistema de Trazabilidad</h3>
 
-<div id="pantallaFormulario" style="display:none;">
+<div class="field">
+<label>Herramienta</label>
+<select id="herramienta"></select>
+<div class="error" id="errorHerramienta">Campo obligatorio</div>
+</div>
 
-<h2>Movimiento</h2>
-
-<div id="listaHerramientas" style="margin-bottom:10px;"></div>
+<div class="field">
+<label>Código</label>
+<input id="modelo">
+<div class="error" id="errorModelo">Campo obligatorio</div>
+</div>
 
 <div class="field">
 <label>Origen</label>
-<div id="origenAuto" style="padding:10px; background:#f1f5f9;"></div>
+<select id="origen" onchange="toggleOtro('origen')">
+<option>Pañol Intelmec</option>
+<option>Porta</option>
+<option>Oficina</option>
+<option>Coca Cola</option>
+<option>Otro</option>
+</select>
+<input id="origenOtro" placeholder="Escribir origen" style="display:none">
+<div class="error" id="errorOrigen">Campo obligatorio</div>
 </div>
 
 <div class="field">
 <label>Destino</label>
-<select id="destino">
-<option value="">Seleccionar</option>
+<select id="destino" onchange="toggleOtro('destino')">
 <option>Pañol Intelmec</option>
-<option>Obra</option>
-<option>REPARACIÓN</option>
+<option>Pañol Armoy</option>
+<option>Porta</option>
+<option>Oficina</option>
+<option>Coca Cola</option>
+<option>Otro</option>
 </select>
+<input id="destinoOtro" placeholder="Escribir destino" style="display:none">
+<div class="error" id="errorDestino">Campo obligatorio</div>
 </div>
 
 <div class="field">
-<label>Clave</label>
-<input id="clave">
+<label>Responsable</label>
+<input id="responsable">
+<div class="error" id="errorResponsable">Campo obligatorio</div>
 </div>
 
-<button onclick="enviar()" id="btnGuardar">Guardar</button>
+<div class="field">
+<label>Observaciones</label>
+<input id="obs">
+</div>
+
+<button onclick="enviar()" id="btnGuardar">Guardar Movimiento</button>
 
 <div id="mensaje"></div>
-
-</div>
 
 </div>
 
@@ -95,163 +142,154 @@ button {
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxYOgzrNSly5_wR8ULFjx693n9X1J5jA0IEAsCL8YwKSUQhNobvqxXXlhT7J7uzKgVF/exec";
 
+// 🔹 LEER QR
 const params = new URLSearchParams(window.location.search);
-const id = params.get("id");
+const herramientaQR = params.get("herramienta");
+const codigoQR = params.get("codigo");
 
-let ubicacionActual = "";
+// 🔹 LISTA HERRAMIENTAS
+let herramientas = [
+"Amoladora 4\"",
+"Amoladora 7\"",
+"Atornilladora eléctrica",
+"Equipo oxicorte",
+"Maquina de soldar",
+"Morsa N 6",
+"Nivel laser",
+"Taladro Percutor"
+];
 
-// 🔹 LOCAL STORAGE
-function obtenerLista() {
-    return JSON.parse(localStorage.getItem("herramientas")) || [];
-}
+function cargarHerramientas() {
+    let select = document.getElementById("herramienta");
+    herramientas.sort();
+    herramientas.forEach(h => {
+        select.innerHTML += `<option>${h}</option>`;
+    });
 
-function guardarLista(lista) {
-    localStorage.setItem("herramientas", JSON.stringify(lista));
-}
+    // 🔹 Autocompletar desde QR
+    if (herramientaQR) {
+        select.value = herramientaQR;
+    }
 
-// 🔹 FORMATEAR FECHA
-function formatearFecha(f) {
-    if (!f || f === "-") return "-";
-    let d = new Date(f);
-    return d.toLocaleString();
-}
-
-// 🔹 CARGAR (CORREGIDO)
-async function cargar() {
-
-    const contenedor = document.getElementById("pantallaInfo");
-
-    try {
-
-        if (!id) {
-            contenedor.innerText = "QR inválido";
-            return;
-        }
-
-        const res = await fetch(API_URL + "?id=" + id);
-
-        if (!res.ok) {
-            contenedor.innerText = "Error de conexión";
-            return;
-        }
-
-        const data = await res.json();
-
-        if (data.error) {
-            contenedor.innerText = "Herramienta no encontrada";
-            return;
-        }
-
-        ubicacionActual = data.ubicacion || "Sin movimientos";
-
-        let lista = obtenerLista();
-
-        if (!lista.find(h => h.id === data.id)) {
-            lista.push({ id: data.id, nombre: data.nombre });
-            guardarLista(lista);
-        }
-
-        contenedor.innerHTML = `
-            <h2>${data.nombre}</h2>
-            <p><b>Ubicación:</b> ${data.ubicacion || "-"}</p>
-            <p><b>Responsable:</b> ${data.responsable_actual || "-"}</p>
-            <p><b>Último movimiento:</b> ${formatearFecha(data.fecha)}</p>
-            <button onclick="form()">Generar movimiento</button>
-        `;
-
-    } catch (error) {
-        contenedor.innerText = "Error general";
-        console.error(error);
+    if (codigoQR) {
+        document.getElementById("modelo").value = codigoQR;
     }
 }
 
-// 🔹 MOSTRAR FORM
-function form() {
-    document.getElementById("pantallaInfo").style.display = "none";
-    document.getElementById("pantallaFormulario").style.display = "block";
+// 🔹 Mostrar "Otro"
+function toggleOtro(tipo) {
+    let select = document.getElementById(tipo);
+    let input = document.getElementById(tipo + "Otro");
 
-    document.getElementById("origenAuto").innerText = ubicacionActual;
-
-    render();
+    if (select.value === "Otro") {
+        input.style.display = "block";
+    } else {
+        input.style.display = "none";
+        input.value = "";
+    }
 }
 
-// 🔹 LISTA
-function render() {
-    let lista = obtenerLista();
+// 🔹 Validación
+function validar() {
 
-    document.getElementById("listaHerramientas").innerHTML =
-        lista.map(h => `<div style="padding:6px; border-bottom:1px solid #eee;">${h.nombre}</div>`).join("");
+    let valido = true;
+
+    function check(id, errorId) {
+        let val = document.getElementById(id).value;
+        let error = document.getElementById(errorId);
+
+        if (!val) {
+            error.style.display = "block";
+            valido = false;
+        } else {
+            error.style.display = "none";
+        }
+    }
+
+    check("herramienta", "errorHerramienta");
+    check("modelo", "errorModelo");
+    check("responsable", "errorResponsable");
+
+    let origen = document.getElementById("origen").value === "Otro"
+        ? document.getElementById("origenOtro").value
+        : document.getElementById("origen").value;
+
+    let destino = document.getElementById("destino").value === "Otro"
+        ? document.getElementById("destinoOtro").value
+        : document.getElementById("destino").value;
+
+    if (!origen) {
+        document.getElementById("errorOrigen").style.display = "block";
+        valido = false;
+    } else {
+        document.getElementById("errorOrigen").style.display = "none";
+    }
+
+    if (!destino) {
+        document.getElementById("errorDestino").style.display = "block";
+        valido = false;
+    } else {
+        document.getElementById("errorDestino").style.display = "none";
+    }
+
+    return valido;
 }
 
-// 🔹 ENVIAR
+// 🔹 Enviar datos
 async function enviar() {
 
     const mensaje = document.getElementById("mensaje");
     const boton = document.getElementById("btnGuardar");
 
-    let lista = obtenerLista();
-
-    if (lista.length === 0) {
+    if (!validar()) {
         mensaje.style.color = "red";
-        mensaje.innerText = "No hay herramientas";
-        return;
-    }
-
-    let destino = document.getElementById("destino").value;
-    let clave = document.getElementById("clave").value;
-
-    if (!destino || !clave) {
-        mensaje.style.color = "red";
-        mensaje.innerText = "Completar datos";
+        mensaje.innerText = "❗ Completar campos obligatorios";
         return;
     }
 
     boton.disabled = true;
     boton.innerText = "Guardando...";
 
+    let origen = document.getElementById("origen").value === "Otro"
+        ? document.getElementById("origenOtro").value
+        : document.getElementById("origen").value;
+
+    let destino = document.getElementById("destino").value === "Otro"
+        ? document.getElementById("destinoOtro").value
+        : document.getElementById("destino").value;
+
     let data = {
-        herramientas: lista,
-        origen: ubicacionActual,
-        destino: destino,
-        clave: clave,
+        herramienta: document.getElementById("herramienta").value,
+        modelo: document.getElementById("modelo").value,
+        codigo: document.getElementById("modelo").value,
+        origen,
+        destino,
+        responsable: document.getElementById("responsable").value,
         tipo: "TRASLADO",
-        obs: ""
+        obs: document.getElementById("obs").value
     };
 
     try {
-
-        const res = await fetch(API_URL, {
+        await fetch(API_URL, {
             method: "POST",
             body: JSON.stringify(data)
         });
 
-        const result = await res.json();
-
-        if (result.error) {
-            mensaje.style.color = "red";
-            mensaje.innerText = result.error;
-            boton.disabled = false;
-            boton.innerText = "Guardar";
-            return;
-        }
-
         mensaje.style.color = "green";
-        mensaje.innerText = "Movimiento guardado";
+        mensaje.innerText = "✅ Movimiento guardado";
 
-        localStorage.removeItem("herramientas");
-        render();
+        document.querySelectorAll("input").forEach(i => i.value = "");
 
     } catch (error) {
         mensaje.style.color = "red";
-        mensaje.innerText = "Error al guardar";
+        mensaje.innerText = "❌ Error al guardar";
     }
 
     boton.disabled = false;
-    boton.innerText = "Guardar";
+    boton.innerText = "Guardar Movimiento";
 }
 
-// 🔹 INIT
-cargar();
+cargarHerramientas();
 
 </script>
 
