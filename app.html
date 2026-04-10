@@ -78,7 +78,7 @@ button {
 
 <div class="container">
 
-<!-- 🔹 PANTALLA DE INFORMACIÓN -->
+<!-- 🔹 PANTALLA INFO -->
 <div id="pantallaInfo">Cargando...</div>
 
 <!-- 🔹 FORMULARIO -->
@@ -88,17 +88,9 @@ button {
 
 <div class="field">
 <label>Origen</label>
-<select id="origen" onchange="toggleOtro('origen')">
-<option value="">Seleccionar...</option>
-<option>REPARACIÓN</option>
-<option>Pañol Intelmec</option>
-<option>Porta</option>
-<option>Oficina</option>
-<option>Coca Cola</option>
-<option>Otro</option>
-</select>
-<input id="origenOtro" placeholder="Escribir origen" style="display:none; margin-top: 8px;">
-<div class="error" id="errorOrigen">Campo obligatorio</div>
+<div id="origenAuto" style="padding:12px; background:#f1f5f9; border-radius:6px; font-weight:bold;">
+-
+</div>
 </div>
 
 <div class="field">
@@ -144,6 +136,7 @@ const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 
 let herramientaData = null;
+let ubicacionActual = "";
 
 // 🔹 Mostrar/ocultar "Otro"
 function toggleOtro(campo) {
@@ -156,6 +149,23 @@ function toggleOtro(campo) {
         input.style.display = "none";
         input.value = "";
     }
+}
+
+// 🔹 Formatear fecha
+function formatearFecha(fechaRaw) {
+
+    if (!fechaRaw || fechaRaw === "-") return "-";
+
+    let fecha = new Date(fechaRaw);
+
+    let dia = String(fecha.getDate()).padStart(2, '0');
+    let mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    let anio = fecha.getFullYear();
+
+    let hora = String(fecha.getHours()).padStart(2, '0');
+    let min = String(fecha.getMinutes()).padStart(2, '0');
+
+    return `${dia}/${mes}/${anio} ${hora}:${min}`;
 }
 
 // 🔹 Cargar info
@@ -176,12 +186,13 @@ async function cargarHerramienta() {
         }
 
         herramientaData = data;
+        ubicacionActual = data.ubicacion;
 
         document.getElementById("pantallaInfo").innerHTML = `
             <h2>${data.nombre}</h2>
             <p><b>Ubicación:</b> ${data.ubicacion}</p>
             <p><b>Responsable:</b> ${data.responsable_actual}</p>
-            <p><b>Último movimiento:</b> ${data.fecha}</p>
+            <p><b>Último movimiento:</b> ${formatearFecha(data.fecha)}</p>
 
             <button onclick="mostrarFormulario()">Generar movimiento</button>
         `;
@@ -195,6 +206,8 @@ async function cargarHerramienta() {
 function mostrarFormulario() {
     document.getElementById("pantallaInfo").style.display = "none";
     document.getElementById("pantallaFormulario").style.display = "block";
+
+    document.getElementById("origenAuto").innerText = ubicacionActual;
 }
 
 // 🔹 Validación
@@ -216,20 +229,9 @@ function validar() {
 
     check("clave", "errorClave");
 
-    let origen = document.getElementById("origen").value === "Otro"
-        ? document.getElementById("origenOtro").value
-        : document.getElementById("origen").value;
-
     let destino = document.getElementById("destino").value === "Otro"
         ? document.getElementById("destinoOtro").value
         : document.getElementById("destino").value;
-
-    if (!origen) {
-        document.getElementById("errorOrigen").style.display = "block";
-        valido = false;
-    } else {
-        document.getElementById("errorOrigen").style.display = "none";
-    }
 
     if (!destino) {
         document.getElementById("errorDestino").style.display = "block";
@@ -256,13 +258,20 @@ async function enviar() {
     boton.disabled = true;
     boton.innerText = "Guardando...";
 
-    let origen = document.getElementById("origen").value === "Otro"
-        ? document.getElementById("origenOtro").value
-        : document.getElementById("origen").value;
+    let origen = ubicacionActual;
 
     let destino = document.getElementById("destino").value === "Otro"
         ? document.getElementById("destinoOtro").value
         : document.getElementById("destino").value;
+
+    // 🔴 Validación extra
+    if (origen === destino) {
+        mensaje.style.color = "red";
+        mensaje.innerText = "❗ Origen y destino no pueden ser iguales";
+        boton.disabled = false;
+        boton.innerText = "Guardar Movimiento";
+        return;
+    }
 
     let data = {
         id: herramientaData.id,
@@ -295,12 +304,8 @@ async function enviar() {
         // limpiar
         document.getElementById("clave").value = "";
         document.getElementById("obs").value = "";
-        document.getElementById("origen").selectedIndex = 0;
         document.getElementById("destino").selectedIndex = 0;
-
-        document.getElementById("origenOtro").value = "";
         document.getElementById("destinoOtro").value = "";
-        document.getElementById("origenOtro").style.display = "none";
         document.getElementById("destinoOtro").style.display = "none";
 
     } catch (error) {
