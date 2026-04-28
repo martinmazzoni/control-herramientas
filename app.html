@@ -6,7 +6,6 @@
 
 <title>Control de Herramientas</title>
 
-<!-- QR LIB -->
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
@@ -20,6 +19,22 @@ body {
     max-width: 420px;
     margin: auto;
     padding: 15px;
+}
+
+/* 🔹 HEADER */
+.header {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.header img {
+    max-width: 100%;
+    height: auto;
+}
+
+.header h2 {
+    margin: 5px 0 10px;
+    font-size: 18px;
 }
 
 .card {
@@ -44,12 +59,13 @@ button.secondary {
     background: #6b7280;
 }
 
-input, select {
+input, select, textarea {
     width: 100%;
     padding: 12px;
     margin-top: 6px;
     border-radius: 6px;
     border: 1px solid #ccc;
+    box-sizing: border-box;
 }
 
 .lista {
@@ -83,6 +99,12 @@ input, select {
 
 <div class="container">
 
+<!-- 🔹 HEADER -->
+<div class="header">
+    <img src="https://i.imgur.com/RWyuyWM.png">
+    <h2>CONTROL DE HERRAMIENTAS</h2>
+</div>
+
 <!-- 🔹 PANTALLA INICIAL -->
 <div id="pantallaInicio" class="card">Cargando...</div>
 
@@ -93,7 +115,7 @@ input, select {
 
 <p><b>Origen:</b> <span id="origenInd"></span></p>
 
-<select id="destinoInd">
+<select id="destinoInd" onchange="toggleOtro('Ind')">
 <option value="">Destino...</option>
 <option>Pañol Intelmec</option>
 <option>Pañol Armoy</option>
@@ -101,9 +123,12 @@ input, select {
 <option>Oficina</option>
 <option>Coca Cola</option>
 <option>REPARACIÓN</option>
+<option value="Otro">Otro</option>
 </select>
 
-<input id="claveInd" placeholder="Clave operario">
+<input id="destinoIndOtro" placeholder="Escribir destino" style="display:none;">
+
+<input type="password" id="claveInd" placeholder="Clave operario">
 <input id="obsInd" placeholder="Observaciones">
 
 <button onclick="guardarIndividual()">Guardar</button>
@@ -129,7 +154,7 @@ input, select {
 
 <hr>
 
-<select id="destinoMul">
+<select id="destinoMul" onchange="toggleOtro('Mul')">
 <option value="">Destino...</option>
 <option>Pañol Intelmec</option>
 <option>Pañol Armoy</option>
@@ -137,9 +162,12 @@ input, select {
 <option>Oficina</option>
 <option>Coca Cola</option>
 <option>REPARACIÓN</option>
+<option value="Otro">Otro</option>
 </select>
 
-<input id="claveMul" placeholder="Clave operario">
+<input id="destinoMulOtro" placeholder="Escribir destino" style="display:none;">
+
+<input type="password" id="claveMul" placeholder="Clave operario">
 <input id="obsMul" placeholder="Observaciones">
 
 <button onclick="guardarMultiple()">Confirmar movimiento</button>
@@ -159,13 +187,35 @@ let herramienta = null;
 let listaIDs = new Set();
 let scanner = null;
 
-/***********************
- * INIT
- ***********************/
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 
 cargarInicio();
+
+/***********************
+ * NUEVO: OTRO DESTINO
+ ***********************/
+function toggleOtro(tipo){
+    const select = document.getElementById("destino"+tipo);
+    const input = document.getElementById("destino"+tipo+"Otro");
+
+    if(select.value === "Otro"){
+        input.style.display = "block";
+    } else {
+        input.style.display = "none";
+        input.value = "";
+    }
+}
+
+function getDestino(tipo){
+    let destino = document.getElementById("destino"+tipo).value;
+
+    if(destino === "Otro"){
+        destino = document.getElementById("destino"+tipo+"Otro").value;
+    }
+
+    return destino;
+}
 
 /***********************
  * PANTALLA INICIAL
@@ -188,7 +238,7 @@ async function cargarInicio() {
         <p><b>Responsable:</b> ${data.responsable_actual}</p>
         <p><b>Último:</b> ${formatear(data.fecha)}</p>
 
-        <button onclick="abrirIndividual()">🔹 Carga individual</button>
+        <button onclick="abrirIndividual()">Carga individual</button>
         <button onclick="abrirMultiple()">📦 Carga múltiple</button>
     `;
 }
@@ -199,7 +249,7 @@ function formatear(f) {
 }
 
 /***********************
- * NAVEGACIÓN
+ * NAV
  ***********************/
 function abrirIndividual() {
     toggle("pantallaInicio","pantallaIndividual");
@@ -226,7 +276,7 @@ function toggle(off,on){
  ***********************/
 async function guardarIndividual(){
 
-    const destino = document.getElementById("destinoInd").value;
+    const destino = getDestino("Ind");
     const clave = document.getElementById("claveInd").value;
 
     if(!destino || !clave) return alert("Completar datos");
@@ -252,19 +302,12 @@ async function guardarIndividual(){
 }
 
 /***********************
- * SCANNER
+ * SCANNER Y RESTO (SIN CAMBIOS)
  ***********************/
 function iniciarScanner(){
-
     if(scanner) return;
-
     scanner = new Html5Qrcode("reader");
-
-    scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        (txt)=>procesarQR(txt)
-    );
+    scanner.start({ facingMode: "environment" },{ fps: 10, qrbox: 250 },(txt)=>procesarQR(txt));
 }
 
 function detenerScanner(){
@@ -275,36 +318,23 @@ function detenerScanner(){
 }
 
 function procesarQR(txt){
-
     let valor = txt;
-
     if(txt.includes("id=")){
         valor = new URL(txt).searchParams.get("id");
     }
-
     if(!listaIDs.has(valor)){
         listaIDs.add(valor);
         renderLista();
     }
 }
 
-/***********************
- * LISTA
- ***********************/
 function renderLista(){
-
     const cont = document.getElementById("lista");
     cont.innerHTML="";
-
     listaIDs.forEach(id=>{
         const div=document.createElement("div");
         div.className="item";
-
-        div.innerHTML=`
-        <span>${id}</span>
-        <button onclick="eliminar('${id}')">X</button>
-        `;
-
+        div.innerHTML=`<span>${id}</span><button onclick="eliminar('${id}')">X</button>`;
         cont.appendChild(div);
     });
 }
@@ -326,7 +356,7 @@ async function guardarMultiple(){
 
     if(listaIDs.size===0) return alert("Sin herramientas");
 
-    const destino = document.getElementById("destinoMul").value;
+    const destino = getDestino("Mul");
     const clave = document.getElementById("claveMul").value;
 
     if(!destino || !clave) return alert("Completar datos");
