@@ -21,7 +21,7 @@ body {
     padding: 15px;
 }
 
-/* 🔹 HEADER */
+/* HEADER */
 .header {
     text-align: center;
     margin-bottom: 10px;
@@ -59,7 +59,7 @@ button.secondary {
     background: #6b7280;
 }
 
-input, select, textarea {
+input, select {
     width: 100%;
     padding: 12px;
     margin-top: 6px;
@@ -99,16 +99,16 @@ input, select, textarea {
 
 <div class="container">
 
-<!-- 🔹 HEADER -->
+<!-- HEADER -->
 <div class="header">
     <img src="https://i.imgur.com/RWyuyWM.png">
     <h2>CONTROL DE HERRAMIENTAS</h2>
 </div>
 
-<!-- 🔹 PANTALLA INICIAL -->
+<!-- PANTALLA INICIAL -->
 <div id="pantallaInicio" class="card">Cargando...</div>
 
-<!-- 🔹 INDIVIDUAL -->
+<!-- INDIVIDUAL -->
 <div id="pantallaIndividual" class="card" style="display:none;">
 
 <h3>Carga individual</h3>
@@ -138,7 +138,7 @@ input, select, textarea {
 
 </div>
 
-<!-- 🔹 MULTIPLE -->
+<!-- MULTIPLE -->
 <div id="pantallaMultiple" class="card" style="display:none;">
 
 <h3>Escaneo múltiple</h3>
@@ -193,7 +193,7 @@ const id = params.get("id");
 cargarInicio();
 
 /***********************
- * NUEVO: OTRO DESTINO
+ * OTRO DESTINO
  ***********************/
 function toggleOtro(tipo){
     const select = document.getElementById("destino"+tipo);
@@ -218,7 +218,7 @@ function getDestino(tipo){
 }
 
 /***********************
- * PANTALLA INICIAL
+ * CARGA INICIAL (FIX)
  ***********************/
 async function cargarInicio() {
 
@@ -227,20 +227,32 @@ async function cargarInicio() {
         return;
     }
 
-    const res = await fetch(API_URL + "?id=" + id);
-    const data = await res.json();
+    try {
 
-    herramienta = data;
+        const res = await fetch(API_URL + "?id=" + id);
+        const data = await res.json();
 
-    document.getElementById("pantallaInicio").innerHTML = `
-        <h2>${data.nombre}</h2>
-        <p><b>Ubicación:</b> ${data.ubicacion}</p>
-        <p><b>Responsable:</b> ${data.responsable_actual}</p>
-        <p><b>Último:</b> ${formatear(data.fecha)}</p>
+        if (data.error) {
+            document.getElementById("pantallaInicio").innerText = "❌ No encontrada";
+            return;
+        }
 
-        <button onclick="abrirIndividual()">Carga individual</button>
-        <button onclick="abrirMultiple()">📦 Carga múltiple</button>
-    `;
+        herramienta = data;
+
+        document.getElementById("pantallaInicio").innerHTML = `
+            <h2>${data.nombre}</h2>
+            <p><b>Ubicación:</b> ${data.ubicacion}</p>
+            <p><b>Responsable:</b> ${data.responsable_actual}</p>
+            <p><b>Último:</b> ${formatear(data.fecha)}</p>
+
+            <button onclick="abrirIndividual()">Carga individual</button>
+            <button onclick="abrirMultiple()">📦 Carga múltiple</button>
+        `;
+
+    } catch (err) {
+        document.getElementById("pantallaInicio").innerText = "❌ Error de conexión";
+        console.error(err);
+    }
 }
 
 function formatear(f) {
@@ -302,7 +314,7 @@ async function guardarIndividual(){
 }
 
 /***********************
- * SCANNER Y RESTO (SIN CAMBIOS)
+ * SCANNER Y LISTA (igual)
  ***********************/
 function iniciarScanner(){
     if(scanner) return;
