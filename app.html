@@ -14,36 +14,24 @@ body {
     background: #f4f6f8;
     margin: 0;
 }
-
 .container {
     max-width: 420px;
     margin: auto;
     padding: 15px;
 }
-
-/* HEADER */
 .header {
     text-align: center;
     margin-bottom: 10px;
 }
-
 .header img {
     max-width: 100%;
-    height: auto;
 }
-
-.header h2 {
-    margin: 5px 0 10px;
-    font-size: 18px;
-}
-
 .card {
     background: white;
     padding: 15px;
     border-radius: 10px;
     margin-bottom: 10px;
 }
-
 button {
     width: 100%;
     padding: 14px;
@@ -54,20 +42,16 @@ button {
     background: #2563eb;
     color: white;
 }
-
 button.secondary {
     background: #6b7280;
 }
-
 input, select {
     width: 100%;
     padding: 12px;
     margin-top: 6px;
     border-radius: 6px;
     border: 1px solid #ccc;
-    box-sizing: border-box;
 }
-
 .lista {
     max-height: 150px;
     overflow-y: auto;
@@ -75,22 +59,14 @@ input, select {
     border-radius: 6px;
     padding: 8px;
 }
-
 .item {
     display: flex;
     justify-content: space-between;
     padding: 6px;
     border-bottom: 1px solid #ddd;
 }
-
 #reader {
     width: 100%;
-}
-
-#mensaje {
-    text-align: center;
-    margin-top: 10px;
-    font-weight: bold;
 }
 </style>
 </head>
@@ -99,18 +75,14 @@ input, select {
 
 <div class="container">
 
-<!-- HEADER -->
 <div class="header">
     <img src="https://i.imgur.com/RWyuyWM.png">
     <h2>CONTROL DE HERRAMIENTAS</h2>
 </div>
 
-<!-- PANTALLA INICIAL -->
 <div id="pantallaInicio" class="card">Cargando...</div>
 
-<!-- INDIVIDUAL -->
 <div id="pantallaIndividual" class="card" style="display:none;">
-
 <h3>Carga individual</h3>
 
 <p><b>Origen:</b> <span id="origenInd"></span></p>
@@ -127,7 +99,6 @@ input, select {
 </select>
 
 <input id="destinoIndOtro" placeholder="Escribir destino" style="display:none;">
-
 <input type="password" id="claveInd" placeholder="Clave operario">
 <input id="obsInd" placeholder="Observaciones">
 
@@ -135,12 +106,9 @@ input, select {
 <button class="secondary" onclick="volverInicio()">⬅ Volver</button>
 
 <div id="msgInd"></div>
-
 </div>
 
-<!-- MULTIPLE -->
 <div id="pantallaMultiple" class="card" style="display:none;">
-
 <h3>Escaneo múltiple</h3>
 
 <div id="reader"></div>
@@ -166,7 +134,6 @@ input, select {
 </select>
 
 <input id="destinoMulOtro" placeholder="Escribir destino" style="display:none;">
-
 <input type="password" id="claveMul" placeholder="Clave operario">
 <input id="obsMul" placeholder="Observaciones">
 
@@ -174,7 +141,6 @@ input, select {
 <button class="secondary" onclick="volverInicio()">⬅ Volver</button>
 
 <div id="mensaje"></div>
-
 </div>
 
 </div>
@@ -192,9 +158,7 @@ const id = params.get("id");
 
 cargarInicio();
 
-/***********************
- * OTRO DESTINO
- ***********************/
+/************* DESTINO *************/
 function toggleOtro(tipo){
     const select = document.getElementById("destino"+tipo);
     const input = document.getElementById("destino"+tipo+"Otro");
@@ -209,37 +173,44 @@ function toggleOtro(tipo){
 
 function getDestino(tipo){
     let destino = document.getElementById("destino"+tipo).value;
-
     if(destino === "Otro"){
         destino = document.getElementById("destino"+tipo+"Otro").value;
     }
-
     return destino;
 }
 
-/***********************
- * CARGA INICIAL (FIX)
- ***********************/
+/************* CARGA INICIAL *************/
 async function cargarInicio() {
 
+    const pantalla = document.getElementById("pantallaInicio");
+
     if (!id) {
-        document.getElementById("pantallaInicio").innerText = "QR inválido";
+        pantalla.innerText = "❌ QR inválido";
         return;
     }
 
     try {
 
-        const res = await fetch(API_URL + "?id=" + id);
-        const data = await res.json();
+        const res = await fetch(API_URL + "?id=" + encodeURIComponent(id));
+        const text = await res.text();
+
+        let data;
+
+        try {
+            data = JSON.parse(text);
+        } catch {
+            console.error("Respuesta no JSON:", text);
+            throw new Error("Respuesta inválida");
+        }
 
         if (data.error) {
-            document.getElementById("pantallaInicio").innerText = "❌ No encontrada";
+            pantalla.innerText = "❌ No encontrada";
             return;
         }
 
         herramienta = data;
 
-        document.getElementById("pantallaInicio").innerHTML = `
+        pantalla.innerHTML = `
             <h2>${data.nombre}</h2>
             <p><b>Ubicación:</b> ${data.ubicacion}</p>
             <p><b>Responsable:</b> ${data.responsable_actual}</p>
@@ -250,7 +221,7 @@ async function cargarInicio() {
         `;
 
     } catch (err) {
-        document.getElementById("pantallaInicio").innerText = "❌ Error de conexión";
+        pantalla.innerText = "❌ Error de conexión";
         console.error(err);
     }
 }
@@ -260,32 +231,25 @@ function formatear(f) {
     return new Date(f).toLocaleString();
 }
 
-/***********************
- * NAV
- ***********************/
+/************* NAV *************/
 function abrirIndividual() {
     toggle("pantallaInicio","pantallaIndividual");
     document.getElementById("origenInd").innerText = herramienta.ubicacion;
 }
-
 function abrirMultiple() {
     toggle("pantallaInicio","pantallaMultiple");
 }
-
 function volverInicio() {
     detenerScanner();
     toggle("pantallaIndividual","pantallaInicio");
     toggle("pantallaMultiple","pantallaInicio");
 }
-
 function toggle(off,on){
     if(document.getElementById(off)) document.getElementById(off).style.display="none";
     document.getElementById(on).style.display="block";
 }
 
-/***********************
- * INDIVIDUAL
- ***********************/
+/************* INDIVIDUAL *************/
 async function guardarIndividual(){
 
     const destino = getDestino("Ind");
@@ -302,33 +266,46 @@ async function guardarIndividual(){
         obs: document.getElementById("obsInd").value
     };
 
-    const res = await fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify(data)
-    });
+    try {
 
-    const r = await res.json();
+        const res = await fetch(API_URL,{
+            method:"POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        });
 
-    document.getElementById("msgInd").innerText =
-        r.error ? "❌ "+r.error : "✅ Guardado";
+        const text = await res.text();
+        let r;
+
+        try {
+            r = JSON.parse(text);
+        } catch {
+            console.error("Respuesta inválida:", text);
+            throw new Error();
+        }
+
+        document.getElementById("msgInd").innerText =
+            r.error ? "❌ " + r.error : "✅ Guardado";
+
+    } catch {
+        document.getElementById("msgInd").innerText = "❌ Error de conexión";
+    }
 }
 
-/***********************
- * SCANNER Y LISTA (igual)
- ***********************/
+/************* SCANNER *************/
 function iniciarScanner(){
     if(scanner) return;
     scanner = new Html5Qrcode("reader");
     scanner.start({ facingMode: "environment" },{ fps: 10, qrbox: 250 },(txt)=>procesarQR(txt));
 }
-
 function detenerScanner(){
     if(scanner){
         scanner.stop();
         scanner = null;
     }
 }
-
 function procesarQR(txt){
     let valor = txt;
     if(txt.includes("id=")){
@@ -340,6 +317,7 @@ function procesarQR(txt){
     }
 }
 
+/************* LISTA *************/
 function renderLista(){
     const cont = document.getElementById("lista");
     cont.innerHTML="";
@@ -350,20 +328,16 @@ function renderLista(){
         cont.appendChild(div);
     });
 }
-
 function eliminar(id){
     listaIDs.delete(id);
     renderLista();
 }
-
 function limpiarLista(){
     listaIDs.clear();
     renderLista();
 }
 
-/***********************
- * MULTIPLE
- ***********************/
+/************* MULTIPLE *************/
 async function guardarMultiple(){
 
     if(listaIDs.size===0) return alert("Sin herramientas");
@@ -384,17 +358,34 @@ async function guardarMultiple(){
         obs: document.getElementById("obsMul").value
     };
 
-    const res = await fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify(data)
-    });
+    try {
 
-    const r = await res.json();
+        const res = await fetch(API_URL,{
+            method:"POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        });
 
-    document.getElementById("mensaje").innerText =
-        r.error ? "❌ "+r.error : "✅ Movimientos registrados";
+        const text = await res.text();
+        let r;
 
-    limpiarLista();
+        try {
+            r = JSON.parse(text);
+        } catch {
+            console.error("Respuesta inválida:", text);
+            throw new Error();
+        }
+
+        document.getElementById("mensaje").innerText =
+            r.error ? "❌ " + r.error : "✅ Movimientos registrados";
+
+        limpiarLista();
+
+    } catch {
+        document.getElementById("mensaje").innerText = "❌ Error de conexión";
+    }
 }
 
 </script>
