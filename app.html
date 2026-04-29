@@ -1,393 +1,206 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Control de Herramientas</title>
-
-<script src="https://unpkg.com/html5-qrcode"></script>
-
-<style>
-body {
-    font-family: Arial;
-    background: #f4f6f8;
-    margin: 0;
-}
-.container {
-    max-width: 420px;
-    margin: auto;
-    padding: 15px;
-}
-.header {
-    text-align: center;
-    margin-bottom: 10px;
-}
-.header img {
-    max-width: 100%;
-}
-.card {
-    background: white;
-    padding: 15px;
-    border-radius: 10px;
-    margin-bottom: 10px;
-}
-button {
-    width: 100%;
-    padding: 14px;
-    margin-top: 8px;
-    border: none;
-    border-radius: 6px;
-    font-size: 16px;
-    background: #2563eb;
-    color: white;
-}
-button.secondary {
-    background: #6b7280;
-}
-input, select {
-    width: 100%;
-    padding: 12px;
-    margin-top: 6px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-}
-.lista {
-    max-height: 150px;
-    overflow-y: auto;
-    background: #f1f5f9;
-    border-radius: 6px;
-    padding: 8px;
-}
-.item {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px;
-    border-bottom: 1px solid #ddd;
-}
-#reader {
-    width: 100%;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Herramientas</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: sans-serif; background: #f4f6f8; margin: 0; }
+        .container { max-width: 420px; margin: auto; padding: 15px; }
+        .card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        button { width: 100%; padding: 14px; margin-top: 8px; border: none; border-radius: 6px; font-size: 16px; background: #2563eb; color: white; cursor: pointer; }
+        button.secondary { background: #6b7280; }
+        input, select { width: 100%; padding: 12px; margin-top: 6px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+        .lista { max-height: 150px; overflow-y: auto; background: #f1f5f9; border-radius: 6px; padding: 8px; margin-top: 10px; }
+        .item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #ddd; align-items: center; }
+        .item button { width: auto; padding: 5px 10px; margin: 0; background: #ef4444; }
+        #reader { width: 100%; border-radius: 8px; overflow: hidden; }
+        .status-msg { text-align: center; margin-top: 10px; font-weight: bold; padding: 10px; border-radius: 5px; }
+        .success { background: #dcfce7; color: #166534; }
+        .error { background: #fee2e2; color: #991b1b; }
+    </style>
 </head>
-
 <body>
 
 <div class="container">
+    <div id="pantallaInicio" class="card">Cargando herramienta...</div>
 
-<div class="header">
-    <img src="https://i.imgur.com/RWyuyWM.png">
-    <h2>CONTROL DE HERRAMIENTAS</h2>
-</div>
+    <div id="pantallaIndividual" class="card" style="display:none;">
+        <h3>Carga Individual</h3>
+        <p><b>Origen:</b> <span id="origenInd"></span></p>
+        <select id="destinoInd">
+            <option value="">Seleccione Destino...</option>
+            <option>Pañol Intelmec</option>
+            <option>Pañol Armoy</option>
+            <option>Porta</option>
+            <option>Oficina</option>
+            <option>Coca Cola</option>
+            <option>REPARACIÓN</option>
+        </select>
+        <input type="password" id="claveInd" placeholder="Clave de operario">
+        <input type="text" id="obsInd" placeholder="Observaciones (opcional)">
+        <button id="btnGuardarInd" onclick="guardarIndividual()">Guardar Movimiento</button>
+        <button class="secondary" onclick="volverInicio()">⬅ Volver</button>
+        <div id="msgInd" class="status-msg"></div>
+    </div>
 
-<div id="pantallaInicio" class="card">Cargando...</div>
-
-<div id="pantallaIndividual" class="card" style="display:none;">
-<h3>Carga individual</h3>
-
-<p><b>Origen:</b> <span id="origenInd"></span></p>
-
-<select id="destinoInd" onchange="toggleOtro('Ind')">
-<option value="">Destino...</option>
-<option>Pañol Intelmec</option>
-<option>Pañol Armoy</option>
-<option>Porta</option>
-<option>Oficina</option>
-<option>Coca Cola</option>
-<option>REPARACIÓN</option>
-<option value="Otro">Otro</option>
-</select>
-
-<input id="destinoIndOtro" placeholder="Escribir destino" style="display:none;">
-<input type="password" id="claveInd" placeholder="Clave operario">
-<input id="obsInd" placeholder="Observaciones">
-
-<button onclick="guardarIndividual()">Guardar</button>
-<button class="secondary" onclick="volverInicio()">⬅ Volver</button>
-
-<div id="msgInd"></div>
-</div>
-
-<div id="pantallaMultiple" class="card" style="display:none;">
-<h3>Escaneo múltiple</h3>
-
-<div id="reader"></div>
-
-<button onclick="iniciarScanner()">▶ Iniciar escaneo</button>
-<button onclick="detenerScanner()">⏹ Detener escaneo</button>
-
-<div class="lista" id="lista"></div>
-
-<button onclick="limpiarLista()">Limpiar lista</button>
-
-<hr>
-
-<select id="destinoMul" onchange="toggleOtro('Mul')">
-<option value="">Destino...</option>
-<option>Pañol Intelmec</option>
-<option>Pañol Armoy</option>
-<option>Porta</option>
-<option>Oficina</option>
-<option>Coca Cola</option>
-<option>REPARACIÓN</option>
-<option value="Otro">Otro</option>
-</select>
-
-<input id="destinoMulOtro" placeholder="Escribir destino" style="display:none;">
-<input type="password" id="claveMul" placeholder="Clave operario">
-<input id="obsMul" placeholder="Observaciones">
-
-<button onclick="guardarMultiple()">Confirmar movimiento</button>
-<button class="secondary" onclick="volverInicio()">⬅ Volver</button>
-
-<div id="mensaje"></div>
-</div>
-
+    <div id="pantallaMultiple" class="card" style="display:none;">
+        <h3>Escaneo Múltiple</h3>
+        <div id="reader"></div>
+        <button onclick="iniciarScanner()">▶ Iniciar Cámara</button>
+        <button class="secondary" onclick="detenerScanner()">⏹ Detener Cámara</button>
+        <div class="lista" id="lista"></div>
+        <button class="secondary" style="background:#94a3b8" onclick="limpiarLista()">Vaciar Lista</button>
+        <hr>
+        <select id="destinoMul">
+            <option value="">Seleccione Destino...</option>
+            <option>Pañol Intelmec</option>
+            <option>Pañol Armoy</option>
+            <option>Porta</option>
+            <option>Oficina</option>
+            <option>Coca Cola</option>
+            <option>REPARACIÓN</option>
+        </select>
+        <input type="password" id="claveMul" placeholder="Clave de operario">
+        <input type="text" id="obsMul" placeholder="Observaciones">
+        <button id="btnGuardarMul" onclick="guardarMultiple()">Confirmar Todo</button>
+        <button class="secondary" onclick="volverInicio()">⬅ Volver</button>
+        <div id="msgMul" class="status-msg"></div>
+    </div>
 </div>
 
 <script>
+    // CAMBIA ESTA URL POR TU ID DE IMPLEMENTACIÓN NUEVA
+    const API_URL = "https://script.google.com/macros/s/AKfycbxYOgzrNSly5_wR8ULFjx693n9X1J5jA0IEAsCL8YwKSUQhNobvqxXXlhT7J7uzKgVF/exec";
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxYOgzrNSly5_wR8ULFjx693n9X1J5jA0IEAsCL8YwKSUQhNobvqxXXlhT7J7uzKgVF/exec";
+    let herramienta = null;
+    let listaIDs = new Set();
+    let scanner = null;
 
-let herramienta = null;
-let listaIDs = new Set();
-let scanner = null;
+    const params = new URLSearchParams(window.location.search);
+    const idHerramienta = params.get("id");
 
-const params = new URLSearchParams(window.location.search);
-const id = params.get("id");
-
-cargarInicio();
-
-/************* DESTINO *************/
-function toggleOtro(tipo){
-    const select = document.getElementById("destino"+tipo);
-    const input = document.getElementById("destino"+tipo+"Otro");
-
-    if(select.value === "Otro"){
-        input.style.display = "block";
-    } else {
-        input.style.display = "none";
-        input.value = "";
-    }
-}
-
-function getDestino(tipo){
-    let destino = document.getElementById("destino"+tipo).value;
-    if(destino === "Otro"){
-        destino = document.getElementById("destino"+tipo+"Otro").value;
-    }
-    return destino;
-}
-
-/************* CARGA INICIAL *************/
-async function cargarInicio() {
-
-    const pantalla = document.getElementById("pantallaInicio");
-
-    if (!id) {
-        pantalla.innerText = "❌ QR inválido";
-        return;
-    }
-
-    try {
-
-        const res = await fetch(API_URL + "?id=" + encodeURIComponent(id));
-        const text = await res.text();
-
-        let data;
-
-        try {
-            data = JSON.parse(text);
-        } catch {
-            console.error("Respuesta no JSON:", text);
-            throw new Error("Respuesta inválida");
-        }
-
-        if (data.error) {
-            pantalla.innerText = "❌ No encontrada";
+    async function cargarInicio() {
+        if (!idHerramienta) {
+            document.getElementById("pantallaInicio").innerHTML = "❌ QR Inválido o sin ID";
             return;
         }
-
-        herramienta = data;
-
-        pantalla.innerHTML = `
-            <h2>${data.nombre}</h2>
-            <p><b>Ubicación:</b> ${data.ubicacion}</p>
-            <p><b>Responsable:</b> ${data.responsable_actual}</p>
-            <p><b>Último:</b> ${formatear(data.fecha)}</p>
-
-            <button onclick="abrirIndividual()">Carga individual</button>
-            <button onclick="abrirMultiple()">📦 Carga múltiple</button>
-        `;
-
-    } catch (err) {
-        pantalla.innerText = "❌ Error de conexión";
-        console.error(err);
+        try {
+            const res = await fetch(API_URL + "?id=" + idHerramienta);
+            const data = await res.json();
+            if (data.error) {
+                document.getElementById("pantallaInicio").innerText = "Error: " + data.error;
+                return;
+            }
+            herramienta = data;
+            document.getElementById("pantallaInicio").innerHTML = `
+                <h2>${data.nombre}</h2>
+                <p><b>Ubicación:</b> ${data.ubicacion}</p>
+                <p><b>Responsable:</b> ${data.responsable_actual}</p>
+                <p><b>Último mov:</b> ${data.fecha !== "-" ? new Date(data.fecha).toLocaleString() : "-"}</p>
+                <button onclick="abrirIndividual()">📍 Traslado Individual</button>
+                <button onclick="abrirMultiple()" style="background:#059669">📦 Traslado Múltiple (Lote)</button>
+            `;
+        } catch (e) {
+            document.getElementById("pantallaInicio").innerText = "Error de conexión al cargar.";
+        }
     }
-}
 
-function formatear(f) {
-    if (!f || f === "-") return "-";
-    return new Date(f).toLocaleString();
-}
+    cargarInicio();
 
-/************* NAV *************/
-function abrirIndividual() {
-    toggle("pantallaInicio","pantallaIndividual");
-    document.getElementById("origenInd").innerText = herramienta.ubicacion;
-}
-function abrirMultiple() {
-    toggle("pantallaInicio","pantallaMultiple");
-}
-function volverInicio() {
-    detenerScanner();
-    toggle("pantallaIndividual","pantallaInicio");
-    toggle("pantallaMultiple","pantallaInicio");
-}
-function toggle(off,on){
-    if(document.getElementById(off)) document.getElementById(off).style.display="none";
-    document.getElementById(on).style.display="block";
-}
+    function abrirIndividual() { toggle("pantallaInicio", "pantallaIndividual"); document.getElementById("origenInd").innerText = herramienta.ubicacion; }
+    function abrirMultiple() { toggle("pantallaInicio", "pantallaMultiple"); }
+    function volverInicio() { detenerScanner(); toggle("pantallaIndividual", "pantallaInicio"); toggle("pantallaMultiple", "pantallaInicio"); }
+    function toggle(off, on) { document.getElementById(off).style.display = "none"; document.getElementById(on).style.display = "block"; }
 
-/************* INDIVIDUAL *************/
-async function guardarIndividual(){
-
-    const destino = getDestino("Ind");
-    const clave = document.getElementById("claveInd").value;
-
-    if(!destino || !clave) return alert("Completar datos");
-
-    const data = {
-        id: herramienta.id,
-        origen: herramienta.ubicacion,
-        destino,
-        clave,
-        tipo: "TRASLADO",
-        obs: document.getElementById("obsInd").value
-    };
-
-    try {
-
-        const res = await fetch(API_URL,{
-            method:"POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(data)
-        });
-
-        const text = await res.text();
-        let r;
+    async function enviarDatos(data, msgElementId, btnId) {
+        const msgDiv = document.getElementById(msgElementId);
+        const btn = document.getElementById(btnId);
+        
+        msgDiv.innerText = "⏳ Procesando...";
+        msgDiv.className = "status-msg";
+        btn.disabled = true;
 
         try {
-            r = JSON.parse(text);
-        } catch {
-            console.error("Respuesta inválida:", text);
-            throw new Error();
+            await fetch(API_URL, {
+                method: "POST",
+                mode: "no-cors",
+                cache: "no-cache",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify(data)
+            });
+            
+            msgDiv.innerText = "✅ ¡Movimiento Guardado!";
+            msgDiv.classList.add("success");
+            setTimeout(() => { location.reload(); }, 2000);
+        } catch (e) {
+            msgDiv.innerText = "❌ Error de conexión";
+            msgDiv.classList.add("error");
+            btn.disabled = false;
         }
-
-        document.getElementById("msgInd").innerText =
-            r.error ? "❌ " + r.error : "✅ Guardado";
-
-    } catch {
-        document.getElementById("msgInd").innerText = "❌ Error de conexión";
     }
-}
 
-/************* SCANNER *************/
-function iniciarScanner(){
-    if(scanner) return;
-    scanner = new Html5Qrcode("reader");
-    scanner.start({ facingMode: "environment" },{ fps: 10, qrbox: 250 },(txt)=>procesarQR(txt));
-}
-function detenerScanner(){
-    if(scanner){
-        scanner.stop();
-        scanner = null;
+    function guardarIndividual() {
+        const destino = document.getElementById("destinoInd").value;
+        const clave = document.getElementById("claveInd").value;
+        if (!destino || !clave) return alert("Faltan datos");
+        
+        enviarDatos({
+            id: herramienta.id,
+            origen: herramienta.ubicacion,
+            destino,
+            clave,
+            tipo: "TRASLADO",
+            obs: document.getElementById("obsInd").value
+        }, "msgInd", "btnGuardarInd");
     }
-}
-function procesarQR(txt){
-    let valor = txt;
-    if(txt.includes("id=")){
-        valor = new URL(txt).searchParams.get("id");
+
+    function guardarMultiple() {
+        const destino = document.getElementById("destinoMul").value;
+        const clave = document.getElementById("claveMul").value;
+        if (listaIDs.size === 0) return alert("Lista vacía");
+        if (!destino || !clave) return alert("Faltan datos");
+
+        enviarDatos({
+            herramientas: Array.from(listaIDs).map(id => ({ id })),
+            origen: herramienta.ubicacion,
+            destino,
+            clave,
+            tipo: "TRASLADO",
+            obs: document.getElementById("obsMul").value
+        }, "msgMul", "btnGuardarMul");
     }
-    if(!listaIDs.has(valor)){
-        listaIDs.add(valor);
-        renderLista();
-    }
-}
 
-/************* LISTA *************/
-function renderLista(){
-    const cont = document.getElementById("lista");
-    cont.innerHTML="";
-    listaIDs.forEach(id=>{
-        const div=document.createElement("div");
-        div.className="item";
-        div.innerHTML=`<span>${id}</span><button onclick="eliminar('${id}')">X</button>`;
-        cont.appendChild(div);
-    });
-}
-function eliminar(id){
-    listaIDs.delete(id);
-    renderLista();
-}
-function limpiarLista(){
-    listaIDs.clear();
-    renderLista();
-}
-
-/************* MULTIPLE *************/
-async function guardarMultiple(){
-
-    if(listaIDs.size===0) return alert("Sin herramientas");
-
-    const destino = getDestino("Mul");
-    const clave = document.getElementById("claveMul").value;
-
-    if(!destino || !clave) return alert("Completar datos");
-
-    const herramientas = Array.from(listaIDs).map(id=>({id}));
-
-    const data = {
-        herramientas,
-        origen: herramienta.ubicacion,
-        destino,
-        clave,
-        tipo:"TRASLADO",
-        obs: document.getElementById("obsMul").value
-    };
-
-    try {
-
-        const res = await fetch(API_URL,{
-            method:"POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(data)
+    // --- LÓGICA SCANNER ---
+    function iniciarScanner() {
+        if (scanner) return;
+        scanner = new Html5Qrcode("reader");
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
+            let id = txt.includes("id=") ? new URL(txt).searchParams.get("id") : txt;
+            if (!listaIDs.has(id)) {
+                listaIDs.add(id);
+                renderLista();
+                vibrar();
+            }
         });
-
-        const text = await res.text();
-        let r;
-
-        try {
-            r = JSON.parse(text);
-        } catch {
-            console.error("Respuesta inválida:", text);
-            throw new Error();
-        }
-
-        document.getElementById("mensaje").innerText =
-            r.error ? "❌ " + r.error : "✅ Movimientos registrados";
-
-        limpiarLista();
-
-    } catch {
-        document.getElementById("mensaje").innerText = "❌ Error de conexión";
     }
-}
 
+    function detenerScanner() { if (scanner) { scanner.stop(); scanner = null; } }
+    function vibrar() { if (navigator.vibrate) navigator.vibrate(100); }
+
+    function renderLista() {
+        const cont = document.getElementById("lista");
+        cont.innerHTML = "";
+        listaIDs.forEach(id => {
+            const div = document.createElement("div");
+            div.className = "item";
+            div.innerHTML = `<span>ID: <b>${id}</b></span><button onclick="eliminar('${id}')">Quitar</button>`;
+            cont.appendChild(div);
+        });
+    }
+    function eliminar(id) { listaIDs.delete(id); renderLista(); }
+    function limpiarLista() { listaIDs.clear(); renderLista(); }
 </script>
 
 </body>
