@@ -29,8 +29,9 @@
     <div id="pantallaInicio" class="card">Cargando herramienta...</div>
 
     <div id="pantallaIndividual" class="card" style="display:none;">
-        <h3>Carga Individual</h3>
-        <p><b>Origen:</b> <span id="origenInd"></span></p>
+        <h3>Traslado Individual</h3>
+        <p><b>Herramienta:</b> <span id="nombreHerInd"></span></p>
+        
         <select id="destinoInd" onchange="checkOtro(this, 'otroInd')">
             <option value="">Seleccione Destino...</option>
             <option>Pañol Intelmec</option>
@@ -42,21 +43,24 @@
             <option value="OTRO">--- OTRO (Escribir) ---</option>
         </select>
         <input type="text" id="otroInd" class="input-otro" placeholder="¿A dónde se lo lleva?">
+
         <input type="password" id="claveInd" placeholder="Clave de operario">
         <input type="text" id="obsInd" placeholder="Observaciones (opcional)">
+        
         <button id="btnGuardarInd" onclick="guardarIndividual()">Guardar Movimiento</button>
         <button class="secondary" onclick="volverInicio()">⬅ Volver</button>
         <div id="msgInd" class="status-msg"></div>
     </div>
 
     <div id="pantallaMultiple" class="card" style="display:none;">
-        <h3>Escaneo Múltiple</h3>
+        <h3>Traslado por Lote</h3>
         <div id="reader"></div>
         <button onclick="iniciarScanner()">▶ Iniciar Cámara</button>
         <button class="secondary" onclick="detenerScanner()">⏹ Detener Cámara</button>
         <div class="lista" id="lista"></div>
         <button class="secondary" style="background:#94a3b8" onclick="limpiarLista()">Vaciar Lista</button>
         <hr>
+        
         <select id="destinoMul" onchange="checkOtro(this, 'otroMul')">
             <option value="">Seleccione Destino...</option>
             <option>Pañol Intelmec</option>
@@ -68,8 +72,10 @@
             <option value="OTRO">--- OTRO (Escribir) ---</option>
         </select>
         <input type="text" id="otroMul" class="input-otro" placeholder="¿A dónde se lo lleva?">
+
         <input type="password" id="claveMul" placeholder="Clave de operario">
         <input type="text" id="obsMul" placeholder="Observaciones">
+        
         <button id="btnGuardarMul" onclick="guardarMultiple()">Confirmar Todo</button>
         <button class="secondary" onclick="volverInicio()">⬅ Volver</button>
         <div id="msgMul" class="status-msg"></div>
@@ -109,12 +115,14 @@
     }
     cargarInicio();
 
-    function abrirIndividual() { toggle("pantallaInicio", "pantallaIndividual"); document.getElementById("origenInd").innerText = herramienta.ubicacion; }
+    function abrirIndividual() { 
+        toggle("pantallaInicio", "pantallaIndividual"); 
+        document.getElementById("nombreHerInd").innerText = herramienta.nombre;
+    }
     function abrirMultiple() { toggle("pantallaInicio", "pantallaMultiple"); }
     function volverInicio() { detenerScanner(); toggle("pantallaIndividual", "pantallaInicio"); toggle("pantallaMultiple", "pantallaInicio"); }
     function toggle(off, on) { document.getElementById(off).style.display = "none"; document.getElementById(on).style.display = "block"; }
 
-    // NUEVA FUNCIÓN: Validar clave contra el Excel antes de enviar
     async function validarClaveServidor(clave) {
         try {
             const res = await fetch(`${API_URL}?validarClave=${encodeURIComponent(clave)}`);
@@ -131,7 +139,6 @@
         msgDiv.className = "status-msg";
         btn.disabled = true;
 
-        // 1. Validar Clave primero
         const esValida = await validarClaveServidor(data.clave);
         if (!esValida) {
             msgDiv.innerText = "❌ Clave Incorrecta";
@@ -148,11 +155,11 @@
                 headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify(data)
             });
-            msgDiv.innerText = "✅ Guardado con éxito";
+            msgDiv.innerText = "✅ Movimiento registrado";
             msgDiv.classList.add("success");
             setTimeout(() => { location.reload(); }, 2000);
         } catch (e) {
-            msgDiv.innerText = "❌ Error al guardar";
+            msgDiv.innerText = "❌ Error al conectar";
             msgDiv.classList.add("error");
             btn.disabled = false;
         }
@@ -164,7 +171,15 @@
         const clave = document.getElementById("claveInd").value;
         if (destino === "OTRO") destino = otroDestino;
         if (!destino || !clave) return alert("Faltan datos");
-        enviarDatos({ id: herramienta.id, origen: herramienta.ubicacion, destino, clave, tipo: "TRASLADO", obs: document.getElementById("obsInd").value }, "msgInd", "btnGuardarInd");
+        
+        // Ya NO enviamos el origen, el backend lo buscará solo
+        enviarDatos({ 
+            id: herramienta.id, 
+            destino, 
+            clave, 
+            tipo: "TRASLADO", 
+            obs: document.getElementById("obsInd").value 
+        }, "msgInd", "btnGuardarInd");
     }
 
     function guardarMultiple() {
@@ -173,7 +188,14 @@
         const clave = document.getElementById("claveMul").value;
         if (destino === "OTRO") destino = otroDestino;
         if (listaIDs.size === 0 || !destino || !clave) return alert("Faltan datos");
-        enviarDatos({ herramientas: Array.from(listaIDs).map(id => ({ id })), origen: herramienta.ubicacion, destino, clave, tipo: "TRASLADO", obs: document.getElementById("obsMul").value }, "msgMul", "btnGuardarMul");
+
+        enviarDatos({ 
+            herramientas: Array.from(listaIDs).map(id => ({ id })), 
+            destino, 
+            clave, 
+            tipo: "TRASLADO", 
+            obs: document.getElementById("obsMul").value 
+        }, "msgMul", "btnGuardarMul");
     }
 
     function iniciarScanner() {
@@ -181,7 +203,11 @@
         scanner = new Html5Qrcode("reader");
         scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
             let id = txt.includes("id=") ? new URL(txt).searchParams.get("id") : txt;
-            if (!listaIDs.has(id)) { listaIDs.add(id); renderLista(); }
+            if (!listaIDs.has(id)) { 
+                listaIDs.add(id); 
+                renderLista(); 
+                if (navigator.vibrate) navigator.vibrate(100);
+            }
         });
     }
     function detenerScanner() { if (scanner) { scanner.stop(); scanner = null; } }
