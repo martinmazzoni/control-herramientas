@@ -10,6 +10,7 @@
         .container { max-width: 420px; margin: auto; padding: 15px; }
         .card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         button { width: 100%; padding: 14px; margin-top: 8px; border: none; border-radius: 6px; font-size: 16px; background: #2563eb; color: white; cursor: pointer; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
         button.secondary { background: #6b7280; }
         input, select { width: 100%; padding: 12px; margin-top: 6px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
         .lista { max-height: 150px; overflow-y: auto; background: #f1f5f9; border-radius: 6px; padding: 8px; margin-top: 10px; }
@@ -30,7 +31,6 @@
     <div id="pantallaIndividual" class="card" style="display:none;">
         <h3>Carga Individual</h3>
         <p><b>Origen:</b> <span id="origenInd"></span></p>
-        
         <select id="destinoInd" onchange="checkOtro(this, 'otroInd')">
             <option value="">Seleccione Destino...</option>
             <option>Pañol Intelmec</option>
@@ -42,7 +42,6 @@
             <option value="OTRO">--- OTRO (Escribir) ---</option>
         </select>
         <input type="text" id="otroInd" class="input-otro" placeholder="¿A dónde se lo lleva?">
-
         <input type="password" id="claveInd" placeholder="Clave de operario">
         <input type="text" id="obsInd" placeholder="Observaciones (opcional)">
         <button id="btnGuardarInd" onclick="guardarIndividual()">Guardar Movimiento</button>
@@ -58,7 +57,6 @@
         <div class="lista" id="lista"></div>
         <button class="secondary" style="background:#94a3b8" onclick="limpiarLista()">Vaciar Lista</button>
         <hr>
-        
         <select id="destinoMul" onchange="checkOtro(this, 'otroMul')">
             <option value="">Seleccione Destino...</option>
             <option>Pañol Intelmec</option>
@@ -70,7 +68,6 @@
             <option value="OTRO">--- OTRO (Escribir) ---</option>
         </select>
         <input type="text" id="otroMul" class="input-otro" placeholder="¿A dónde se lo lleva?">
-
         <input type="password" id="claveMul" placeholder="Clave de operario">
         <input type="text" id="obsMul" placeholder="Observaciones">
         <button id="btnGuardarMul" onclick="guardarMultiple()">Confirmar Todo</button>
@@ -80,9 +77,7 @@
 </div>
 
 <script>
-    // CAMBIA ESTA URL POR TU ID DE IMPLEMENTACIÓN NUEVA SI RE-PUBLICAS
     const API_URL = "https://script.google.com/macros/s/AKfycbxYOgzrNSly5_wR8ULFjx693n9X1J5jA0IEAsCL8YwKSUQhNobvqxXXlhT7J7uzKgVF/exec";
-
     let herramienta = null;
     let listaIDs = new Set();
     let scanner = null;
@@ -90,30 +85,17 @@
     const params = new URLSearchParams(window.location.search);
     const idHerramienta = params.get("id");
 
-    // Función para mostrar/ocultar el campo "Otro"
     function checkOtro(select, inputId) {
         const inputOtro = document.getElementById(inputId);
-        if (select.value === "OTRO") {
-            inputOtro.style.display = "block";
-            inputOtro.focus();
-        } else {
-            inputOtro.style.display = "none";
-            inputOtro.value = "";
-        }
+        if (select.value === "OTRO") { inputOtro.style.display = "block"; inputOtro.focus(); } 
+        else { inputOtro.style.display = "none"; inputOtro.value = ""; }
     }
 
     async function cargarInicio() {
-        if (!idHerramienta) {
-            document.getElementById("pantallaInicio").innerHTML = "❌ QR Inválido o sin ID";
-            return;
-        }
+        if (!idHerramienta) { document.getElementById("pantallaInicio").innerHTML = "❌ QR Inválido"; return; }
         try {
             const res = await fetch(API_URL + "?id=" + idHerramienta);
             const data = await res.json();
-            if (data.error) {
-                document.getElementById("pantallaInicio").innerText = "Error: " + data.error;
-                return;
-            }
             herramienta = data;
             document.getElementById("pantallaInicio").innerHTML = `
                 <h2>${data.nombre}</h2>
@@ -121,13 +103,10 @@
                 <p><b>Responsable:</b> ${data.responsable_actual}</p>
                 <p><b>Último mov:</b> ${data.fecha !== "-" ? new Date(data.fecha).toLocaleString() : "-"}</p>
                 <button onclick="abrirIndividual()">📍 Traslado Individual</button>
-                <button onclick="abrirMultiple()" style="background:#059669">📦 Traslado Múltiple (Lote)</button>
+                <button onclick="abrirMultiple()" style="background:#059669">📦 Traslado Múltiple</button>
             `;
-        } catch (e) {
-            document.getElementById("pantallaInicio").innerText = "Error de conexión al cargar.";
-        }
+        } catch (e) { document.getElementById("pantallaInicio").innerText = "Error de conexión."; }
     }
-
     cargarInicio();
 
     function abrirIndividual() { toggle("pantallaInicio", "pantallaIndividual"); document.getElementById("origenInd").innerText = herramienta.ubicacion; }
@@ -135,28 +114,45 @@
     function volverInicio() { detenerScanner(); toggle("pantallaIndividual", "pantallaInicio"); toggle("pantallaMultiple", "pantallaInicio"); }
     function toggle(off, on) { document.getElementById(off).style.display = "none"; document.getElementById(on).style.display = "block"; }
 
+    // NUEVA FUNCIÓN: Validar clave contra el Excel antes de enviar
+    async function validarClaveServidor(clave) {
+        try {
+            const res = await fetch(`${API_URL}?validarClave=${encodeURIComponent(clave)}`);
+            const data = await res.json();
+            return data.valido;
+        } catch (e) { return false; }
+    }
+
     async function enviarDatos(data, msgElementId, btnId) {
         const msgDiv = document.getElementById(msgElementId);
         const btn = document.getElementById(btnId);
         
-        msgDiv.innerText = "⏳ Procesando...";
+        msgDiv.innerText = "⏳ Validando clave...";
         msgDiv.className = "status-msg";
         btn.disabled = true;
 
+        // 1. Validar Clave primero
+        const esValida = await validarClaveServidor(data.clave);
+        if (!esValida) {
+            msgDiv.innerText = "❌ Clave Incorrecta";
+            msgDiv.classList.add("error");
+            btn.disabled = false;
+            return;
+        }
+
+        msgDiv.innerText = "⏳ Guardando...";
         try {
             await fetch(API_URL, {
                 method: "POST",
                 mode: "no-cors",
-                cache: "no-cache",
                 headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify(data)
             });
-            
-            msgDiv.innerText = "✅ ¡Movimiento Guardado!";
+            msgDiv.innerText = "✅ Guardado con éxito";
             msgDiv.classList.add("success");
             setTimeout(() => { location.reload(); }, 2000);
         } catch (e) {
-            msgDiv.innerText = "❌ Error de conexión";
+            msgDiv.innerText = "❌ Error al guardar";
             msgDiv.classList.add("error");
             btn.disabled = false;
         }
@@ -166,76 +162,41 @@
         let destino = document.getElementById("destinoInd").value;
         const otroDestino = document.getElementById("otroInd").value;
         const clave = document.getElementById("claveInd").value;
-
-        if (destino === "OTRO") {
-            if (!otroDestino) return alert("Por favor escribe el destino");
-            destino = otroDestino;
-        }
-
+        if (destino === "OTRO") destino = otroDestino;
         if (!destino || !clave) return alert("Faltan datos");
-        
-        enviarDatos({
-            id: herramienta.id,
-            origen: herramienta.ubicacion,
-            destino: destino,
-            clave,
-            tipo: "TRASLADO",
-            obs: document.getElementById("obsInd").value
-        }, "msgInd", "btnGuardarInd");
+        enviarDatos({ id: herramienta.id, origen: herramienta.ubicacion, destino, clave, tipo: "TRASLADO", obs: document.getElementById("obsInd").value }, "msgInd", "btnGuardarInd");
     }
 
     function guardarMultiple() {
         let destino = document.getElementById("destinoMul").value;
         const otroDestino = document.getElementById("otroMul").value;
         const clave = document.getElementById("claveMul").value;
-
-        if (destino === "OTRO") {
-            if (!otroDestino) return alert("Por favor escribe el destino");
-            destino = otroDestino;
-        }
-
-        if (listaIDs.size === 0) return alert("Lista vacía");
-        if (!destino || !clave) return alert("Faltan datos");
-
-        enviarDatos({
-            herramientas: Array.from(listaIDs).map(id => ({ id })),
-            origen: herramienta.ubicacion,
-            destino: destino,
-            clave,
-            tipo: "TRASLADO",
-            obs: document.getElementById("obsMul").value
-        }, "msgMul", "btnGuardarMul");
+        if (destino === "OTRO") destino = otroDestino;
+        if (listaIDs.size === 0 || !destino || !clave) return alert("Faltan datos");
+        enviarDatos({ herramientas: Array.from(listaIDs).map(id => ({ id })), origen: herramienta.ubicacion, destino, clave, tipo: "TRASLADO", obs: document.getElementById("obsMul").value }, "msgMul", "btnGuardarMul");
     }
 
-    // --- LÓGICA SCANNER ---
     function iniciarScanner() {
         if (scanner) return;
         scanner = new Html5Qrcode("reader");
         scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
             let id = txt.includes("id=") ? new URL(txt).searchParams.get("id") : txt;
-            if (!listaIDs.has(id)) {
-                listaIDs.add(id);
-                renderLista();
-                if (navigator.vibrate) navigator.vibrate(100);
-            }
+            if (!listaIDs.has(id)) { listaIDs.add(id); renderLista(); }
         });
     }
-
     function detenerScanner() { if (scanner) { scanner.stop(); scanner = null; } }
-
     function renderLista() {
         const cont = document.getElementById("lista");
         cont.innerHTML = "";
         listaIDs.forEach(id => {
             const div = document.createElement("div");
             div.className = "item";
-            div.innerHTML = `<span>ID: <b>${id}</b></span><button onclick="eliminar('${id}')">Quitar</button>`;
+            div.innerHTML = `<span>ID: <b>${id}</b></span><button onclick="eliminar('${id}')">X</button>`;
             cont.appendChild(div);
         });
     }
     function eliminar(id) { listaIDs.delete(id); renderLista(); }
     function limpiarLista() { listaIDs.clear(); renderLista(); }
 </script>
-
 </body>
 </html>
