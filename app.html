@@ -9,29 +9,46 @@
         body { font-family: sans-serif; background: #f4f6f8; margin: 0; }
         .container { max-width: 420px; margin: auto; padding: 15px; }
         .card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        button { width: 100%; padding: 14px; margin-top: 8px; border: none; border-radius: 6px; font-size: 16px; background: #2563eb; color: white; cursor: pointer; }
+        
+        /* ESTILO PARA EL LOGO */
+        .logo-container { text-align: center; margin-bottom: 15px; padding-top: 10px; }
+        .logo-img { max-width: 180px; height: auto; }
+
+        h2, h3 { margin-top: 0; color: #1e293b; }
+        button { width: 100%; padding: 14px; margin-top: 8px; border: none; border-radius: 6px; font-size: 16px; background: #2563eb; color: white; cursor: pointer; font-weight: bold; }
         button:disabled { background: #94a3b8; cursor: not-allowed; }
-        button.secondary { background: #6b7280; }
-        input, select { width: 100%; padding: 12px; margin-top: 6px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
-        .lista { max-height: 150px; overflow-y: auto; background: #f1f5f9; border-radius: 6px; padding: 8px; margin-top: 10px; }
+        button.secondary { background: #6b7280; margin-top: 12px; }
+        input, select { width: 100%; padding: 12px; margin-top: 6px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 14px; }
+        
+        .lista { max-height: 150px; overflow-y: auto; background: #f1f5f9; border-radius: 6px; padding: 8px; margin-top: 10px; border: 1px solid #cbd5e1; }
         .item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #ddd; align-items: center; }
-        .item button { width: auto; padding: 5px 10px; margin: 0; background: #ef4444; }
-        #reader { width: 100%; border-radius: 8px; overflow: hidden; }
-        .status-msg { text-align: center; margin-top: 10px; font-weight: bold; padding: 10px; border-radius: 5px; }
+        .item:last-child { border-bottom: none; }
+        .item button { width: auto; padding: 5px 10px; margin: 0; background: #ef4444; font-size: 12px; }
+        
+        #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+        .status-msg { text-align: center; margin-top: 10px; font-weight: bold; padding: 10px; border-radius: 5px; min-height: 20px; }
         .success { background: #dcfce7; color: #166534; }
         .error { background: #fee2e2; color: #991b1b; }
-        .input-otro { border: 2px solid #2563eb; background: #eff6ff; display: none; }
+        .input-otro { border: 2px solid #2563eb; background: #eff6ff; display: none; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="pantallaInicio" class="card">Cargando herramienta...</div>
+    
+    <div class="logo-container">
+        <img src="https://raw.githubusercontent.com/martinmazzoni/control-herramientas/main/tu-logo.png" alt="Logo Empresa" class="logo-img">
+    </div>
+
+    <div id="pantallaInicio" class="card">
+        <p style="text-align: center;">⏳ Cargando información de herramienta...</p>
+    </div>
 
     <div id="pantallaIndividual" class="card" style="display:none;">
-        <h3>Traslado Individual</h3>
+        <h3>📍 Traslado Individual</h3>
         <p><b>Herramienta:</b> <span id="nombreHerInd"></span></p>
         
+        <label>Destino:</label>
         <select id="destinoInd" onchange="checkOtro(this, 'otroInd')">
             <option value="">Seleccione Destino...</option>
             <option>Pañol Intelmec</option>
@@ -42,25 +59,32 @@
             <option>REPARACIÓN</option>
             <option value="OTRO">--- OTRO (Escribir) ---</option>
         </select>
-        <input type="text" id="otroInd" class="input-otro" placeholder="¿A dónde se lo lleva?">
+        <input type="text" id="otroInd" class="input-otro" placeholder="Escriba el lugar de destino">
 
-        <input type="password" id="claveInd" placeholder="Clave de operario">
-        <input type="text" id="obsInd" placeholder="Observaciones (opcional)">
+        <label>Validación:</label>
+        <input type="password" id="claveInd" placeholder="Ingrese su clave de operario">
+        <input type="text" id="obsInd" placeholder="Notas / Observaciones (opcional)">
         
-        <button id="btnGuardarInd" onclick="guardarIndividual()">Guardar Movimiento</button>
-        <button class="secondary" onclick="volverInicio()">⬅ Volver</button>
+        <button id="btnGuardarInd" onclick="guardarIndividual()">GUARDAR MOVIMIENTO</button>
+        <button class="secondary" onclick="volverInicio()">⬅ Cancelar y Volver</button>
         <div id="msgInd" class="status-msg"></div>
     </div>
 
     <div id="pantallaMultiple" class="card" style="display:none;">
-        <h3>Traslado por Lote</h3>
+        <h3>📦 Traslado por Lote</h3>
         <div id="reader"></div>
-        <button onclick="iniciarScanner()">▶ Iniciar Cámara</button>
-        <button class="secondary" onclick="detenerScanner()">⏹ Detener Cámara</button>
-        <div class="lista" id="lista"></div>
-        <button class="secondary" style="background:#94a3b8" onclick="limpiarLista()">Vaciar Lista</button>
-        <hr>
+        <div style="display: flex; gap: 5px;">
+            <button onclick="iniciarScanner()" style="background:#059669">▶ Abrir Cámara</button>
+            <button class="secondary" onclick="detenerScanner()" style="margin-top:8px">⏹ Detener</button>
+        </div>
         
+        <div class="lista" id="lista">
+            <p style="color: #64748b; font-size: 13px; text-align: center;">La lista de escaneo está vacía</p>
+        </div>
+        <button class="secondary" style="background:#94a3b8; font-size: 12px; padding: 8px;" onclick="limpiarLista()">Limpiar Lista</button>
+        <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e2e8f0;">
+        
+        <label>Destino para el lote:</label>
         <select id="destinoMul" onchange="checkOtro(this, 'otroMul')">
             <option value="">Seleccione Destino...</option>
             <option>Pañol Intelmec</option>
@@ -71,19 +95,21 @@
             <option>REPARACIÓN</option>
             <option value="OTRO">--- OTRO (Escribir) ---</option>
         </select>
-        <input type="text" id="otroMul" class="input-otro" placeholder="¿A dónde se lo lleva?">
+        <input type="text" id="otroMul" class="input-otro" placeholder="Escriba el lugar de destino">
 
         <input type="password" id="claveMul" placeholder="Clave de operario">
-        <input type="text" id="obsMul" placeholder="Observaciones">
+        <input type="text" id="obsMul" placeholder="Observaciones generales">
         
-        <button id="btnGuardarMul" onclick="guardarMultiple()">Confirmar Todo</button>
+        <button id="btnGuardarMul" onclick="guardarMultiple()">CONFIRMAR TODO EL LOTE</button>
         <button class="secondary" onclick="volverInicio()">⬅ Volver</button>
         <div id="msgMul" class="status-msg"></div>
     </div>
 </div>
 
 <script>
+    // URL DE TU APP SCRIPT
     const API_URL = "https://script.google.com/macros/s/AKfycbxYOgzrNSly5_wR8ULFjx693n9X1J5jA0IEAsCL8YwKSUQhNobvqxXXlhT7J7uzKgVF/exec";
+    
     let herramienta = null;
     let listaIDs = new Set();
     let scanner = null;
@@ -93,33 +119,57 @@
 
     function checkOtro(select, inputId) {
         const inputOtro = document.getElementById(inputId);
-        if (select.value === "OTRO") { inputOtro.style.display = "block"; inputOtro.focus(); } 
-        else { inputOtro.style.display = "none"; inputOtro.value = ""; }
+        if (select.value === "OTRO") { 
+            inputOtro.style.display = "block"; 
+            inputOtro.focus(); 
+        } else { 
+            inputOtro.style.display = "none"; 
+            inputOtro.value = ""; 
+        }
     }
 
     async function cargarInicio() {
-        if (!idHerramienta) { document.getElementById("pantallaInicio").innerHTML = "❌ QR Inválido"; return; }
+        if (!idHerramienta) { 
+            document.getElementById("pantallaInicio").innerHTML = "<div class='error' style='padding:10px'>❌ Error: No se detectó un ID de herramienta válido.</div>"; 
+            return; 
+        }
         try {
             const res = await fetch(API_URL + "?id=" + idHerramienta);
             const data = await res.json();
+            if (data.error) {
+                document.getElementById("pantallaInicio").innerHTML = `<div class='error'>❌ ${data.error}</div>`;
+                return;
+            }
             herramienta = data;
             document.getElementById("pantallaInicio").innerHTML = `
-                <h2>${data.nombre}</h2>
-                <p><b>Ubicación:</b> ${data.ubicacion}</p>
-                <p><b>Responsable:</b> ${data.responsable_actual}</p>
-                <p><b>Último mov:</b> ${data.fecha !== "-" ? new Date(data.fecha).toLocaleString() : "-"}</p>
-                <button onclick="abrirIndividual()">📍 Traslado Individual</button>
-                <button onclick="abrirMultiple()" style="background:#059669">📦 Traslado Múltiple</button>
+                <h2 style="margin-bottom:5px">${data.nombre}</h2>
+                <p style="color:#64748b; margin-top:0">Cód: ${data.codigo}</p>
+                <hr>
+                <p><b>📍 Ubicación Actual:</b> ${data.ubicacion}</p>
+                <p><b>👤 Responsable:</b> ${data.responsable_actual}</p>
+                <p><b>📅 Último Mov.:</b> ${data.fecha !== "-" ? new Date(data.fecha).toLocaleString() : "-"}</p>
+                <button onclick="abrirIndividual()">Mover solo esta</button>
+                <button onclick="abrirMultiple()" style="background:#059669">Mover varias (Lote)</button>
             `;
-        } catch (e) { document.getElementById("pantallaInicio").innerText = "Error de conexión."; }
+        } catch (e) { 
+            document.getElementById("pantallaInicio").innerText = "Error de conexión con el servidor."; 
+        }
     }
+    
     cargarInicio();
 
     function abrirIndividual() { 
         toggle("pantallaInicio", "pantallaIndividual"); 
         document.getElementById("nombreHerInd").innerText = herramienta.nombre;
     }
-    function abrirMultiple() { toggle("pantallaInicio", "pantallaMultiple"); }
+    function abrirMultiple() { 
+        toggle("pantallaInicio", "pantallaMultiple"); 
+        // Agregamos la herramienta actual por defecto a la lista
+        if (herramienta) {
+            listaIDs.add(herramienta.id);
+            renderLista();
+        }
+    }
     function volverInicio() { detenerScanner(); toggle("pantallaIndividual", "pantallaInicio"); toggle("pantallaMultiple", "pantallaInicio"); }
     function toggle(off, on) { document.getElementById(off).style.display = "none"; document.getElementById(on).style.display = "block"; }
 
@@ -135,7 +185,7 @@
         const msgDiv = document.getElementById(msgElementId);
         const btn = document.getElementById(btnId);
         
-        msgDiv.innerText = "⏳ Validando clave...";
+        msgDiv.innerText = "⏳ Verificando clave...";
         msgDiv.className = "status-msg";
         btn.disabled = true;
 
@@ -147,7 +197,7 @@
             return;
         }
 
-        msgDiv.innerText = "⏳ Guardando...";
+        msgDiv.innerText = "⏳ Registrando en Excel...";
         try {
             await fetch(API_URL, {
                 method: "POST",
@@ -155,11 +205,11 @@
                 headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify(data)
             });
-            msgDiv.innerText = "✅ Movimiento registrado";
+            msgDiv.innerText = "✅ Movimiento exitoso";
             msgDiv.classList.add("success");
             setTimeout(() => { location.reload(); }, 2000);
         } catch (e) {
-            msgDiv.innerText = "❌ Error al conectar";
+            msgDiv.innerText = "❌ Error de red";
             msgDiv.classList.add("error");
             btn.disabled = false;
         }
@@ -170,9 +220,8 @@
         const otroDestino = document.getElementById("otroInd").value;
         const clave = document.getElementById("claveInd").value;
         if (destino === "OTRO") destino = otroDestino;
-        if (!destino || !clave) return alert("Faltan datos");
+        if (!destino || !clave) return alert("Por favor, complete todos los campos.");
         
-        // Ya NO enviamos el origen, el backend lo buscará solo
         enviarDatos({ 
             id: herramienta.id, 
             destino, 
@@ -187,7 +236,8 @@
         const otroDestino = document.getElementById("otroMul").value;
         const clave = document.getElementById("claveMul").value;
         if (destino === "OTRO") destino = otroDestino;
-        if (listaIDs.size === 0 || !destino || !clave) return alert("Faltan datos");
+        if (listaIDs.size === 0) return alert("No hay herramientas en la lista.");
+        if (!destino || !clave) return alert("Faltan datos (destino o clave).");
 
         enviarDatos({ 
             herramientas: Array.from(listaIDs).map(id => ({ id })), 
@@ -202,25 +252,38 @@
         if (scanner) return;
         scanner = new Html5Qrcode("reader");
         scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
-            let id = txt.includes("id=") ? new URL(txt).searchParams.get("id") : txt;
-            if (!listaIDs.has(id)) { 
+            // Extraer ID si es una URL o usar el texto directo
+            let id = txt;
+            if (txt.includes("id=")) {
+                const urlObj = new URL(txt);
+                id = urlObj.searchParams.get("id");
+            }
+            
+            if (id && !listaIDs.has(id)) { 
                 listaIDs.add(id); 
                 renderLista(); 
                 if (navigator.vibrate) navigator.vibrate(100);
             }
-        });
+        }).catch(err => alert("Error al abrir cámara: " + err));
     }
+    
     function detenerScanner() { if (scanner) { scanner.stop(); scanner = null; } }
+    
     function renderLista() {
         const cont = document.getElementById("lista");
         cont.innerHTML = "";
+        if (listaIDs.size === 0) {
+            cont.innerHTML = "<p style='color: #64748b; font-size: 13px; text-align: center;'>Lista vacía</p>";
+            return;
+        }
         listaIDs.forEach(id => {
             const div = document.createElement("div");
             div.className = "item";
-            div.innerHTML = `<span>ID: <b>${id}</b></span><button onclick="eliminar('${id}')">X</button>`;
+            div.innerHTML = `<span>ID: <b>${id}</b></span><button onclick="eliminar('${id}')">Quitar</button>`;
             cont.appendChild(div);
         });
     }
+    
     function eliminar(id) { listaIDs.delete(id); renderLista(); }
     function limpiarLista() { listaIDs.clear(); renderLista(); }
 </script>
